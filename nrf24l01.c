@@ -14,13 +14,73 @@
 
 static dev_t nrf24l01_devt;
 static struct class *nrf24l01_class;
+static int nrf24l01_minor_counter = 0;
 
 struct nrf24l01_dev
 {
     struct spi_device *spi;
     struct gpio_desc *ce_gpio;
     int irq;
+
+    struct cdev cdev;
+    int minor;
 };
+
+/* START OF FILE_OPERATIONS */
+
+static int nrf24l01_open(struct inode *inode, struct file *file)
+{
+    // retrieve hardware data and store it in current file session
+
+    struct nrf24l01_dev *dev = container_of(inode->i_cdev, struct nrf24l01_dev, cdev);
+    file->private_data = dev;
+
+    dev_info(&dev->spi->dev, "Device opened\n");
+    return 0;
+}
+
+static int nrf24l01_release(struct inode *inode, struct file *file)
+{
+    // reverse open actions (nothing for now)
+    struct nrf24l01_dev *dev = file->private_data;
+    dev_info(&dev->spi->dev, "Device closed\n");
+    return 0;
+}
+
+static ssize_t nrf24l01_read(struct file *file, char __user *buf, size_t count, loff_t *offset)
+{
+   // skeleton of the read function (only for now)
+
+    struct nrf24l01_dev *dev = file->private_data;
+    
+    dev_info(&dev->spi->dev, "Read called (requested %zu bytes)\n", count);
+    
+    return 0; 
+}
+
+static ssize_t nrf24l01_write(struct file *file, const char __user *buf, size_t count, loff_t *offset)
+{
+    // skeleton of the write function (only for now)
+
+    struct nrf24l01_dev *dev = file->private_data;
+    
+    dev_info(&dev->spi->dev, "Write called (received %zu bytes)\n", count);
+    
+    return count; 
+}
+
+static const struct file_operations nrf24l01_fops = {
+    .owner = THIS_MODULE,
+    .open = nrf24l01_open,
+    .release = nrf24l01_release,
+    .read = nrf24l01_read,
+    .write = nrf24l01_write,
+};
+
+/* END OF FILE_OPERATIONS   */
+
+
+/* START OF DRIVER DESCRIPTION */
 
 // 1. Device declararion (compativility using SPI and DeviceTree)
 
@@ -118,6 +178,24 @@ static int nrf24l01_probe(struct spi_device *spi)
         dev_info(&spi->dev, "Device [%s] probed successfully\n", model_name);
     }
 
+    // register character device 
+    dev -> minor = nrf24l01_minor_counter++;
+    
+    // attach file_operations and cdev_add
+    cdev_init(&dev->cdev, &nrf24l01_fops);
+    dev->cdev.owner = THIS_MODULE;
+
+    // add Major & minor number 
+    ret = cdev_add(&dev->cdev, nrf24l01_devt + dev->minor, 1);
+
+    if (ret < 0) {
+        pr_err("nrf24l01: Failed to add character device\n");
+        return ret;
+    }
+
+    // create device file in /dev/nrf24l01
+    device_create(nrf24l01_class, &spi->dev, MKDEV(MAJOR(nrf24l01_devt), dev->minor), NULL, "nrf24l01_%d", dev->minor);
+    
     return 0;
 }
 
@@ -142,6 +220,12 @@ static void nrf24l01_remove(struct spi_device *spi)
 
         dev_info(&spi->dev, "Device [%s] removed successfully\n", model_name);
     }
+
+    // remove file
+    device_destroy(nrf24l01_class, MKDEV(MAJOR(nrf24l01_devt), dev->minor));
+    
+    // release char number
+    cdev_del(&dev->cdev);
 }
 
 // 4. Struct declaration
@@ -202,6 +286,8 @@ static void __exit nrf24l01_exit(void)
 
 module_init(nrf24l01_init);
 module_exit(nrf24l01_exit);
+
+/* END OF DRIVER DESCRIPTION */
 
 
 MODULE_DESCRIPTION("nrf24l01 SPI driver");
