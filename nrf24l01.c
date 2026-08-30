@@ -3,8 +3,17 @@
 #include <linux/gpio/consumer.h>
 #include <linux/interrupt.h>
 #include <linux/of.h>
+#include <linux/kdev_t.h>
+#include <linux/fs.h>
+#include <linux/device.h>
+#include <linux/cdev.h>
+#include <linux/version.h>
 
+#define NRF_NDEVICES 2
 #define DRIVER_NAME "nrf24l01"
+
+static dev_t nrf24l01_devt;
+static struct class *nrf24l01_class;
 
 struct nrf24l01_dev
 {
@@ -149,8 +158,51 @@ static struct spi_driver nrf24l01_driver = {
     .id_table = nrf24l01_spi_id,
 };
 
-// 5. Registration in kernel
-module_spi_driver(nrf24l01_driver);
+// 5. Registration in the kernel
+static int __init nrf24l01_init(void)
+{
+    int ret;
+
+    ret = alloc_chrdev_region(&nrf24l01_devt, 0, NRF_NDEVICES, DRIVER_NAME);
+    if (ret < 0) {
+        pr_err("nrf24l01: Failed to allocate character device region\n");
+        return ret;
+    }
+
+    // device class visible in /sys/class
+    nrf24l01_class = class_create(DRIVER_NAME);
+    
+    if (IS_ERR(nrf24l01_class)) {
+        pr_err("nrf24l01: Failed to create class\n");
+        unregister_chrdev_region(nrf24l01_devt, NRF_NDEVICES);
+        return PTR_ERR(nrf24l01_class);
+    }
+
+    // SPI driver registration
+    ret = spi_register_driver(&nrf24l01_driver);
+    if (ret < 0) {
+        pr_err("nrf24l01: Failed to register SPI driver\n");
+        class_destroy(nrf24l01_class);
+        unregister_chrdev_region(nrf24l01_devt, NRF_NDEVICES);
+        return ret;
+    }
+
+    pr_info("nrf24l01: Init successful\n");
+    return 0;
+}
+
+static void __exit nrf24l01_exit(void)
+{
+    // unregister device from Kernel
+    spi_unregister_driver(&nrf24l01_driver);
+    class_destroy(nrf24l01_class);
+    unregister_chrdev_region(nrf24l01_devt, NRF_NDEVICES);
+    pr_info("nrf24l01: Exit successful\n");
+}
+
+module_init(nrf24l01_init);
+module_exit(nrf24l01_exit);
+
 
 MODULE_DESCRIPTION("nrf24l01 SPI driver");
 MODULE_LICENSE("GPL");
