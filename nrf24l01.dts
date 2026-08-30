@@ -1,0 +1,66 @@
+/dts-v1/;
+/plugin/;
+
+/* SPI0 */
+
+&spidev0 {
+	status = "disabled";
+};
+
+&spidev1 {
+	status = "disabled";
+};
+
+&spi0 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+
+	nrf24l01_spi0_cs0: nrf24l01@0 {
+		compatible = "nordic,nrf24l01";
+		model = "SPI0_cs0, nRF24L01 Single Chip 2.4GHz Transceiver";
+
+		interrupt-parent = <&gpio>;
+		interrupts = <23 2>;
+
+		reg = <0>;
+
+		spi-max-frequency = <8000000>;
+		ce-gpios = <&gpio 24 0>;
+	};
+};
+
+/* printctrl definition for spi1 pins - assign pins for SPI*/
+&gpio {
+	spi1_pins_overlay: spi1_pins_overlay {
+		brcm,pins = <19 20 21>;     /* MISO, MOSI, SCLK */
+		brcm,function = <3>;        /* ALT4 */
+		brcm,pull = <2 0 0>;        /* MISO: pull-up, MOSI: none, SCLK: none */
+	};
+
+	spi1_cs_overlay: spi1_cs_overlay {
+		brcm,pins = <18>;           /* CS0 */
+		brcm,function = <1>;        /* OUTPUT */
+		brcm,pull = <0>;            /* none */
+	};
+};
+
+&spi1 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+	cs-gpios = <&gpio 18 1>;
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&spi1_pins_overlay &spi1_cs_overlay>;
+
+	nrf24l01_spi1_cs0: nrf24l01@0 {
+		compatible = "nordic,nrf24l01";
+		model = "SPI1_cs0, nRF24L01 Single Chip 2.4GHz Transceiver";
+		interrupt-parent = <&gpio>;
+		interrupts = <6 2>;
+		reg = <0>;
+		spi-max-frequency = <8000000>;
+		ce-gpios = <&gpio 5 0>;
+	};
+};
