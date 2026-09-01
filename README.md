@@ -5,3 +5,4 @@
     - checking the logs with `make dmesg`.
     - checking major number of the device files in `/proc/devices` (cat /proc/devices | grep nrf24l01).
     - checking device class in `/sys/class` (ls -ld /sys/class/nrf24l01).
+    - checking files created in /dev/ (ls -ld /dev/nrf24l01*).

@@ -18,6 +18,7 @@ MODULE_NAME := nrf24l01
 
 # Source file(s)
 obj-m += $(MODULE_NAME).o
+$(MODULE_NAME)-y := nrf24l01_driver.o nrf_hal.o
 
 # Kernel source directory (auto-detect running kernel)
 KDIR ?= /lib/modules/$(shell uname -r)/build

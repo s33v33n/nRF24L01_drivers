@@ -8,6 +8,9 @@
 #include <linux/device.h>
 #include <linux/cdev.h>
 #include <linux/version.h>
+#include <linux/delay.h>
+#include "nrf_device.h"
+#include "nrf_hal.h"
 
 #define NRF_NDEVICES 2
 #define DRIVER_NAME "nrf24l01"
@@ -16,15 +19,6 @@ static dev_t nrf24l01_devt;
 static struct class *nrf24l01_class;
 static int nrf24l01_minor_counter = 0;
 
-struct nrf24l01_dev
-{
-    struct spi_device *spi;
-    struct gpio_desc *ce_gpio;
-    int irq;
-
-    struct cdev cdev;
-    int minor;
-};
 
 /* START OF FILE_OPERATIONS */
 
@@ -177,6 +171,41 @@ static int nrf24l01_probe(struct spi_device *spi)
 
         dev_info(&spi->dev, "Device [%s] probed successfully\n", model_name);
     }
+
+    /* START OF NRF24 HARDWARE INIT */
+
+    // optionally - if device is working less than 15ms   
+    // msleep(15);
+
+    // RF setup: Channel + Speed + TX power
+    nrf_write_reg(dev, NRF_REG_RF_CH, 0);       // f0 = 2400 MHz (channel 0)
+    nrf_write_reg(dev, NRF_REG_RF_SETUP, 0x07); // Power = 0dBm, Speed = 1Mbit/s
+    nrf_write_reg(dev, NRF_REG_RX_PW_P0, 32);   // RX payload size = 32 bytes 
+
+    nrf_write_reg(dev, NRF_REG_CONFIG, 0x0E);   // power up, enable crc 2 bytes, force crc 
+
+    msleep(2); // start up wait 1.5ms 
+    
+    /* START OF SIMPLE CHECK */  
+    
+    u8 check_pw_p0 = 0;
+    u8 check_config = 0;
+    u8 check_rf_ch = 0;
+    u8 check_rf_setup = 0;
+
+    nrf_read_reg(dev, NRF_REG_RX_PW_P0, &check_pw_p0);
+    nrf_read_reg(dev, NRF_REG_CONFIG, &check_config);
+    nrf_read_reg(dev, NRF_REG_RF_CH, &check_rf_ch);
+    nrf_read_reg(dev, NRF_REG_RF_SETUP, &check_rf_setup);
+
+    dev_info(&spi->dev, "RX_PW_P0 = 0x%02X, expected = 0x20\n", check_pw_p0);
+    dev_info(&spi->dev, "CONFIG = 0x%02X, expected = 0x0E\n", check_config);
+    dev_info(&spi->dev, "RF_CH = 0x%02X, expected = 0x00\n", check_rf_ch);
+    dev_info(&spi->dev, "RF_SETUP = 0x%02X, expected = 0x07\n", check_rf_setup);
+    
+    /* END OF SIMPLE CHECK */
+
+    /* END OF NRF24 HARDWARE INIT */
 
     // register character device 
     dev -> minor = nrf24l01_minor_counter++;
