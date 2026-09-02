@@ -43,3 +43,28 @@ int nrf_write_reg(struct nrf24l01_dev *dev, u8 reg, u8 val)
 
     return spi_sync(dev->spi, &m);
 }
+
+// Write payload to TX FIFO
+int nrf_write_payload(struct nrf24l01_dev *dev, const u8 *buf, size_t len)
+{
+    u8 tx_cmd = NRF_CMD_W_TX_PAYLOAD;
+
+    struct spi_transfer t[2] = {
+        [0] = {
+            .tx_buf = &tx_cmd,
+            .len = 1,
+        },
+        [1] = {
+            .tx_buf = buf,
+            .len = len,
+        }
+    };
+
+    struct spi_message m;
+
+    spi_message_init(&m);
+    spi_message_add_tail(&t[0], &m);
+    spi_message_add_tail(&t[1], &m);
+
+    return spi_sync(dev->spi, &m);
+}

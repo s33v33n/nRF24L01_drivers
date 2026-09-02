@@ -9,6 +9,7 @@
 #include <linux/cdev.h>
 #include <linux/version.h>
 #include <linux/delay.h>
+#include <linux/uaccess.h>
 #include "nrf_device.h"
 #include "nrf_hal.h"
 
@@ -57,10 +58,30 @@ static ssize_t nrf24l01_write(struct file *file, const char __user *buf, size_t 
     // skeleton of the write function (only for now)
 
     struct nrf24l01_dev *dev = file->private_data;
+    u8 tx_buf[32]; 
+
+    size_t payload_len = count;
+    if (payload_len > 32)
+        payload_len = 32;
+
+    // Copy data from user space to kernel space
+    if (copy_from_user(tx_buf, buf, payload_len)) {
+        return -EFAULT;
+    }
+    // Write to device
+    nrf_write_payload(dev, tx_buf, payload_len);
     
-    dev_info(&dev->spi->dev, "Write called (received %zu bytes)\n", count);
+    // CE up
+    gpiod_set_value(dev->ce_gpio, 1);
+
+    udelay(15); 
+
+    // CE down 
+    gpiod_set_value(dev->ce_gpio, 0);
+
+    dev_info(&dev->spi->dev, "Sent %zu bytes!\n", payload_len);
     
-    return count; 
+    return payload_len; 
 }
 
 static const struct file_operations nrf24l01_fops = {
