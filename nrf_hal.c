@@ -106,11 +106,23 @@ irqreturn_t nrf24l01_isr(int irq, void *dev_id)
         dev->rx_data_ready = true;
         wake_up_interruptible(&dev->rx_waitqueue); 
     }
+<<<<<<< HEAD
     if (status & 0x20) { // TX_DS
         dev_info(&dev->spi->dev, "Send packet and received ack.\n");
     }
     if (status & 0x10) { // MAX_RT
         dev_info(&dev->spi->dev, "Error - tx failed.\n");
+=======
+    if (status & 0x20) { // TX_DS 
+        dev_info(&dev->spi->dev, "Send packet - received ack.\n");
+        dev->tx_done = true; 
+        wake_up_interruptible(&dev->tx_waitqueue); 
+    }
+    if (status & 0x10) { // MAX_RT
+        dev_info(&dev->spi->dev, "Error - tx failed (ack).\n");
+        dev->tx_done = true; 
+        wake_up_interruptible(&dev->tx_waitqueue); 
+>>>>>>> development
     }
 
     // Clear RX flag 
