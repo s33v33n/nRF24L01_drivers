@@ -44,21 +44,33 @@ static int nrf24l01_release(struct inode *inode, struct file *file)
 
 static ssize_t nrf24l01_read(struct file *file, char __user *buf, size_t count, loff_t *offset)
 {
-   // skeleton of the read function (only for now)
-
     struct nrf24l01_dev *dev = file->private_data;
+    u8 rx_buf[32];
+    size_t payload_len = count;
+    if (payload_len > 32)
+        payload_len = 32;
     
-    dev_info(&dev->spi->dev, "Read called (requested %zu bytes)\n", count);
+    if (wait_event_interruptible(dev->rx_waitqueue, dev->rx_data_ready)) {
+    return -ERESTARTSYS;
+    }
+
+    nrf_read_payload(dev, rx_buf, payload_len);
+
+    if (copy_to_user(buf, rx_buf, payload_len)) {
+        return -EFAULT;
+    }
+
+    dev_info(&dev->spi->dev, "Received %zu bytes\n", payload_len);
     
-    return 0; 
+    dev->rx_data_ready = false;
+
+    return payload_len; 
 }
 
 static ssize_t nrf24l01_write(struct file *file, const char __user *buf, size_t count, loff_t *offset)
 {
-    // skeleton of the write function (only for now)
-
     struct nrf24l01_dev *dev = file->private_data;
-    u8 tx_buf[32]; 
+    u8 tx_buf[32] = {0}; 
 
     size_t payload_len = count;
     if (payload_len > 32)
@@ -68,16 +80,34 @@ static ssize_t nrf24l01_write(struct file *file, const char __user *buf, size_t 
     if (copy_from_user(tx_buf, buf, payload_len)) {
         return -EFAULT;
     }
-    // Write to device
-    nrf_write_payload(dev, tx_buf, payload_len);
-    
+
+    // turn off RX mode (antena off)
+    gpiod_set_value(dev->ce_gpio, 0);
+
+    // change to TX mode
+    nrf_write_reg(dev, NRF_REG_CONFIG, 0x0E);
+
+    // clear buffer and flags
+    nrf_write_reg(dev, NRF_CMD_FLUSH_TX, 0);
+    nrf_write_reg(dev, NRF_REG_STATUS, 0x70);
+
+    // Write data to device
+    nrf_write_payload(dev, tx_buf, 32);
+
     // CE up
     gpiod_set_value(dev->ce_gpio, 1);
 
-    udelay(15); 
-
+    udelay(15);
+    
     // CE down 
-    gpiod_set_value(dev->ce_gpio, 0);
+    gpiod_set_value(dev->ce_gpio, 0); 
+
+    // radio 
+    msleep(15);
+
+    // return to RX mode 
+    nrf_write_reg(dev, NRF_REG_CONFIG, 0x0F);
+    gpiod_set_value(dev->ce_gpio, 1);
 
     dev_info(&dev->spi->dev, "Sent %zu bytes!\n", payload_len);
     
@@ -199,11 +229,19 @@ static int nrf24l01_probe(struct spi_device *spi)
     // msleep(15);
 
     // RF setup: Channel + Speed + TX power
-    nrf_write_reg(dev, NRF_REG_RF_CH, 0);       // f0 = 2400 MHz (channel 0)
+    nrf_write_reg(dev, NRF_REG_RF_CH, 0x0F);       // f0 = 2400 MHz (channel 15)
     nrf_write_reg(dev, NRF_REG_RF_SETUP, 0x07); // Power = 0dBm, Speed = 1Mbit/s
     nrf_write_reg(dev, NRF_REG_RX_PW_P0, 32);   // RX payload size = 32 bytes 
 
-    nrf_write_reg(dev, NRF_REG_CONFIG, 0x0E);   // power up, enable crc 2 bytes, force crc 
+    nrf_write_reg(dev, NRF_REG_EN_AA, 0x01);      // auto ACK on pipe 0
+    nrf_write_reg(dev, NRF_REG_EN_RXADDR, 0x01);  // Enable RX addr on pipe 0
+    nrf_write_reg(dev, NRF_REG_SETUP_RETR, 0x3F); // 15 retries
+
+    nrf_write_reg(dev, NRF_REG_CONFIG, 0x0F);   // power up, rx mode, enable crc 2 bytes, force crc 
+
+    nrf_write_reg(dev, NRF_CMD_FLUSH_RX, 0);
+    nrf_write_reg(dev, NRF_CMD_FLUSH_TX, 0);
+    nrf_write_reg(dev, NRF_REG_STATUS, 0x70);
 
     msleep(2); // start up wait 1.5ms 
     
@@ -220,13 +258,32 @@ static int nrf24l01_probe(struct spi_device *spi)
     nrf_read_reg(dev, NRF_REG_RF_SETUP, &check_rf_setup);
 
     dev_info(&spi->dev, "RX_PW_P0 = 0x%02X, expected = 0x20\n", check_pw_p0);
-    dev_info(&spi->dev, "CONFIG = 0x%02X, expected = 0x0E\n", check_config);
+    dev_info(&spi->dev, "CONFIG = 0x%02X, expected = 0x0F\n", check_config);
     dev_info(&spi->dev, "RF_CH = 0x%02X, expected = 0x00\n", check_rf_ch);
     dev_info(&spi->dev, "RF_SETUP = 0x%02X, expected = 0x07\n", check_rf_setup);
     
     /* END OF SIMPLE CHECK */
 
     /* END OF NRF24 HARDWARE INIT */
+
+    // Set device to listening mode
+
+    // Init waitqueue
+    init_waitqueue_head(&dev->rx_waitqueue);
+    
+    // Request IRQ from Device Tree
+    dev->irq = spi->irq;
+
+    //                            device,    irq pin,  bottom-half isr, isr function, isr name, device
+    ret = devm_request_threaded_irq(&spi->dev, dev->irq, NULL, nrf24l01_isr, IRQF_TRIGGER_FALLING | IRQF_ONESHOT, "nrf24l01", dev);
+    
+    if (ret) {
+        dev_err(&spi->dev, "Failed to request IRQ %d\n", dev->irq);
+        return ret;
+    }
+
+    // Start listening (CE HIGH)
+    gpiod_set_value(dev->ce_gpio, 1);
 
     // register character device 
     dev -> minor = nrf24l01_minor_counter++;

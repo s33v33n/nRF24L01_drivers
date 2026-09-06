@@ -2,15 +2,22 @@
 #define NRF24L01_H
 
 #include <linux/cdev.h>
+#include <linux/wait.h> 
 
 struct nrf24l01_dev
 {
+    // nrf device 
     struct spi_device *spi;
     struct gpio_desc *ce_gpio;
     int irq;
 
+    // char device 
     struct cdev cdev;
     int minor;
+
+    // reveice data 
+    wait_queue_head_t rx_waitqueue;
+    bool rx_data_ready;
 };
 
 // --- NRF24L01 SPI COMMANDS ---
