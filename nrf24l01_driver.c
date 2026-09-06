@@ -82,12 +82,9 @@ static ssize_t nrf24l01_write(struct file *file, const char __user *buf, size_t 
         return -EFAULT;
     }
 
-<<<<<<< HEAD
-=======
     // sleep tx waiting queue
     dev->tx_done = false; 
 
->>>>>>> development
     // turn off RX mode (antena off)
     gpiod_set_value(dev->ce_gpio, 0);
 
@@ -110,11 +107,7 @@ static ssize_t nrf24l01_write(struct file *file, const char __user *buf, size_t 
     gpiod_set_value(dev->ce_gpio, 0); 
 
     // radio 
-<<<<<<< HEAD
-    msleep(15);
-=======
     wait_event_interruptible_timeout(dev->tx_waitqueue, dev->tx_done, msecs_to_jiffies(25));
->>>>>>> development
 
     // return to RX mode 
     nrf_write_reg(dev, NRF_REG_CONFIG, 0x0F);
@@ -300,17 +293,12 @@ static int nrf24l01_probe(struct spi_device *spi)
 
     // Set device to listening mode
 
-<<<<<<< HEAD
-    // Init waitqueue
-    init_waitqueue_head(&dev->rx_waitqueue);
-=======
     // Init waitqueue for RX
     init_waitqueue_head(&dev->rx_waitqueue);
 
     // Init waitqueue for TX
     init_waitqueue_head(&dev->tx_waitqueue);
     dev->tx_done = true; 
->>>>>>> development
     
     // Request IRQ from Device Tree
     dev->irq = spi->irq;

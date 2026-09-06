@@ -18,13 +18,10 @@ struct nrf24l01_dev
     // reveice data 
     wait_queue_head_t rx_waitqueue;
     bool rx_data_ready;
-<<<<<<< HEAD
-=======
 
     // transmit data 
     wait_queue_head_t tx_waitqueue;
     bool tx_done;    
->>>>>>> development
 };
 
 // --- NRF24L01 SPI COMMANDS ---
