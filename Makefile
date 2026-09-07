@@ -12,6 +12,10 @@
 #   make dtbo         - compile device tree overlay (.dts -> .dtbo)
 #   make dtbo_clean   - remove compiled overlay file
 #   make dmesg        - show last 30 kernel log lines
+#
+#   --- IOCTL ---
+#   make make_ioctl   - compile compile IOCTL program
+#   make run_ioctl    - compile & run IOCTL program
 
 # Module name (without .ko extension)
 MODULE_NAME := nrf24l01
@@ -37,6 +41,7 @@ all:
 # Remove all build artifacts
 clean:
 	$(MAKE) -C $(KDIR) M=$(PWD) clean
+	rm -f test_ioctl	
 
 # Load module directly from .ko file (temporary - lost after reboot)
 load:
@@ -69,10 +74,17 @@ dtbo_unload:
 	sudo dtoverlay -r $(MODULE_NAME)
 	@echo "Overlay unloaded."
 
+# Compile IOCTL 
+make_ioctl:
+	gcc test_ioctl.c -o test_ioctl
+
+# Run IOCTL program
+run_ioctl: make_ioctl
+	sudo ./test_ioctl
 
 # Show kernel logs 
 dmesg:
 	sudo dmesg | tail -30
 
 # these commands are just information for make, not output files
-.PHONY: all clean load unload reload dtbo dtbo_clean dtbo_load dtbo_unload dmesg
+.PHONY: all clean load unload reload dtbo dtbo_clean dtbo_load dtbo_unload dmesg make_ioctl run_ioctl

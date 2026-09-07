@@ -13,6 +13,7 @@
 #include <linux/poll.h>
 #include "nrf_device.h"
 #include "nrf_hal.h"
+#include "nrf_ioctl.h"
 
 #define NRF_NDEVICES 2
 #define DRIVER_NAME "nrf24l01"
@@ -138,6 +139,101 @@ static __poll_t nrf24l01_poll(struct file *file, poll_table *wait)
     return mask;
 }
 
+static long nrf24l01_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+{
+    struct nrf24l01_dev *dev = file->private_data;
+    int val;
+    unsigned char status_reg;
+    unsigned char rf_setup;
+
+    switch(cmd) {
+
+        case NRF_IOCTL_SET_CHANNEL:
+        
+            if (copy_from_user(&val, (int *)arg, sizeof(int))){
+                return -EFAULT;
+            } 
+            if (val < 1 || val > 124){
+                return -EINVAL;
+            }  
+            
+            // device off
+            gpiod_set_value(dev->ce_gpio, 0);
+
+            // channel change
+            nrf_write_reg(dev, NRF_REG_RF_CH, val);
+
+            // device on
+            gpiod_set_value(dev->ce_gpio, 1);
+
+            dev_info(&dev->spi->dev, "IOCTL: Channel set to %d\n", val);
+            break;
+
+        case NRF_IOCTL_SET_POWER:
+            
+            if (copy_from_user(&val, (int *)arg, sizeof(int))){
+                return -EFAULT;
+            } 
+            if (val < 0 || val > 3){
+                return -EINVAL;
+            } 
+            
+            // device off
+            gpiod_set_value(dev->ce_gpio, 0);
+
+            // power change
+            nrf_read_reg(dev, NRF_REG_RF_SETUP, &rf_setup); // read setup
+            rf_setup = (rf_setup & ~0x06) | (val << 1);     // clear and set bits 1-2
+            nrf_write_reg(dev, NRF_REG_RF_SETUP, rf_setup); // save setup
+
+            // device on
+            gpiod_set_value(dev->ce_gpio, 1);
+
+            dev_info(&dev->spi->dev, "IOCTL: Power set to level %d\n", val);
+            break;
+
+        case NRF_IOCTL_SET_SPEED:
+            
+            if (copy_from_user(&val, (int *)arg, sizeof(int))){
+                return -EFAULT;
+            } 
+            if (val != 1 && val != 2){
+                return -EINVAL;
+            }
+            
+            nrf_read_reg(dev, NRF_REG_RF_SETUP, &rf_setup);
+            if (val == 1) {
+                rf_setup &= ~0x08;
+            } 
+            else if (val == 2) {
+                rf_setup |= 0x08;       
+            }  
+
+            // device off
+            gpiod_set_value(dev->ce_gpio, 0);
+
+            // speed change 
+            nrf_write_reg(dev, NRF_REG_RF_SETUP, rf_setup);
+
+            // device on
+            gpiod_set_value(dev->ce_gpio, 1);
+
+            dev_info(&dev->spi->dev, "IOCTL: Speed set to %d\n", val);
+            break;
+
+        case NRF_IOCTL_GET_STATUS:
+            nrf_read_reg(dev, NRF_REG_STATUS, &status_reg);
+            if (copy_to_user((unsigned char *)arg, &status_reg, sizeof(unsigned char))){
+                return -EFAULT;
+            } 
+            break;
+
+        default:
+            return -ENOTTY; // Unknown command
+    }
+    return 0;
+}
+
 static const struct file_operations nrf24l01_fops = {
     .owner = THIS_MODULE,
     .open = nrf24l01_open,
@@ -145,6 +241,7 @@ static const struct file_operations nrf24l01_fops = {
     .read = nrf24l01_read,
     .write = nrf24l01_write,
     .poll = nrf24l01_poll,
+    .unlocked_ioctl = nrf24l01_ioctl,
 };
 
 /* END OF FILE_OPERATIONS   */
@@ -284,7 +381,7 @@ static int nrf24l01_probe(struct spi_device *spi)
 
     dev_info(&spi->dev, "RX_PW_P0 = 0x%02X, expected = 0x20\n", check_pw_p0);
     dev_info(&spi->dev, "CONFIG = 0x%02X, expected = 0x0F\n", check_config);
-    dev_info(&spi->dev, "RF_CH = 0x%02X, expected = 0x00\n", check_rf_ch);
+    dev_info(&spi->dev, "RF_CH = 0x%02X, expected = 0x0F\n", check_rf_ch);
     dev_info(&spi->dev, "RF_SETUP = 0x%02X, expected = 0x07\n", check_rf_setup);
     
     /* END OF SIMPLE CHECK */
