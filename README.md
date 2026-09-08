@@ -12,8 +12,17 @@
     - for transmitter `echo "Hi" | sudo tee /dev/nrf24l01_1`
     - then check logs `make dmesg`, you may be required to resend the message because of transmission medium
 6. The poll() mechnism is supported.
+<<<<<<< HEAD
 7. The ioctl mechnism is supported:
     - after testing radio transmission run ioctl `make run_ioctl`
     - for receiver open another terminal and run `sudo cat /dev/nrf24l01_0`
     - for transmitter `echo "Hi from channel 77" | sudo tee /dev/nrf24l01_1`
     - then check logs `make dmesg`, you may be required to resend the message because of transmission medium
+=======
+7. The IOCTL mechnism is supported:
+    - after testing radio transmission run ioctl `make run_ioctl` and view logs `make dmesg`
+    - for receiver open another terminal and run `sudo cat /dev/nrf24l01_0`
+    - for transmitter `echo "Hi from channel 77" | sudo tee /dev/nrf24l01_1`
+    - then check logs `make dmesg`, you may be required to resend the message because of transmission medium
+8. Mutex mechanism is supported - prevents conflict from user-space access.
+>>>>>>> development

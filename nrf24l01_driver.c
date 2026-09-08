@@ -56,7 +56,11 @@ static ssize_t nrf24l01_read(struct file *file, char __user *buf, size_t count, 
     return -ERESTARTSYS;
     }
 
+    mutex_lock(&dev -> priv_mutex);
+
     nrf_read_payload(dev, rx_buf, payload_len);
+
+    mutex_unlock(&dev -> priv_mutex);
 
     if (copy_to_user(buf, rx_buf, payload_len)) {
         return -EFAULT;
@@ -82,6 +86,8 @@ static ssize_t nrf24l01_write(struct file *file, const char __user *buf, size_t 
     if (copy_from_user(tx_buf, buf, payload_len)) {
         return -EFAULT;
     }
+
+    mutex_lock(&dev -> priv_mutex);
 
     // sleep tx waiting queue
     dev->tx_done = false; 
@@ -113,6 +119,8 @@ static ssize_t nrf24l01_write(struct file *file, const char __user *buf, size_t 
     // return to RX mode 
     nrf_write_reg(dev, NRF_REG_CONFIG, 0x0F);
     gpiod_set_value(dev->ce_gpio, 1);
+
+    mutex_unlock(&dev -> priv_mutex);
 
     dev_info(&dev->spi->dev, "Sent %zu bytes!\n", payload_len);
     
@@ -156,6 +164,11 @@ static long nrf24l01_ioctl(struct file *file, unsigned int cmd, unsigned long ar
             if (val < 1 || val > 124){
                 return -EINVAL;
             }  
+<<<<<<< HEAD
+=======
+
+            mutex_lock(&dev -> priv_mutex);
+>>>>>>> development
             
             // device off
             gpiod_set_value(dev->ce_gpio, 0);
@@ -166,6 +179,11 @@ static long nrf24l01_ioctl(struct file *file, unsigned int cmd, unsigned long ar
             // device on
             gpiod_set_value(dev->ce_gpio, 1);
 
+<<<<<<< HEAD
+=======
+            mutex_unlock(&dev -> priv_mutex);
+
+>>>>>>> development
             dev_info(&dev->spi->dev, "IOCTL: Channel set to %d\n", val);
             break;
 
@@ -177,6 +195,11 @@ static long nrf24l01_ioctl(struct file *file, unsigned int cmd, unsigned long ar
             if (val < 0 || val > 3){
                 return -EINVAL;
             } 
+<<<<<<< HEAD
+=======
+
+            mutex_lock(&dev -> priv_mutex);
+>>>>>>> development
             
             // device off
             gpiod_set_value(dev->ce_gpio, 0);
@@ -189,6 +212,11 @@ static long nrf24l01_ioctl(struct file *file, unsigned int cmd, unsigned long ar
             // device on
             gpiod_set_value(dev->ce_gpio, 1);
 
+<<<<<<< HEAD
+=======
+            mutex_unlock(&dev -> priv_mutex);
+
+>>>>>>> development
             dev_info(&dev->spi->dev, "IOCTL: Power set to level %d\n", val);
             break;
 
@@ -200,6 +228,11 @@ static long nrf24l01_ioctl(struct file *file, unsigned int cmd, unsigned long ar
             if (val != 1 && val != 2){
                 return -EINVAL;
             }
+<<<<<<< HEAD
+=======
+
+            mutex_lock(&dev -> priv_mutex);
+>>>>>>> development
             
             nrf_read_reg(dev, NRF_REG_RF_SETUP, &rf_setup);
             if (val == 1) {
@@ -218,11 +251,26 @@ static long nrf24l01_ioctl(struct file *file, unsigned int cmd, unsigned long ar
             // device on
             gpiod_set_value(dev->ce_gpio, 1);
 
+<<<<<<< HEAD
+=======
+            mutex_unlock(&dev -> priv_mutex);
+
+>>>>>>> development
             dev_info(&dev->spi->dev, "IOCTL: Speed set to %d\n", val);
             break;
 
         case NRF_IOCTL_GET_STATUS:
+<<<<<<< HEAD
             nrf_read_reg(dev, NRF_REG_STATUS, &status_reg);
+=======
+
+            mutex_lock(&dev -> priv_mutex);
+            
+            nrf_read_reg(dev, NRF_REG_STATUS, &status_reg);
+            
+            mutex_unlock(&dev -> priv_mutex);
+
+>>>>>>> development
             if (copy_to_user((unsigned char *)arg, &status_reg, sizeof(unsigned char))){
                 return -EFAULT;
             } 
@@ -276,8 +324,11 @@ static int nrf24l01_probe(struct spi_device *spi)
 
     // memory allocation for device (private data define), structure is filled with zeros
     dev = devm_kzalloc(&spi->dev, sizeof(*dev), GFP_KERNEL);
-    if (!dev)
+    if (!dev){
         return -ENOMEM;
+    }
+        
+    mutex_init(&dev -> priv_mutex);
 
     // spi cinfiguration
     spi->mode = SPI_MODE_0;

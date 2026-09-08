@@ -3,6 +3,7 @@
 
 #include <linux/cdev.h>
 #include <linux/wait.h> 
+#include <linux/mutex.h>
 
 struct nrf24l01_dev
 {
@@ -22,6 +23,9 @@ struct nrf24l01_dev
     // transmit data 
     wait_queue_head_t tx_waitqueue;
     bool tx_done;    
+
+    // synchronization
+    struct mutex priv_mutex;
 };
 
 // --- NRF24L01 SPI COMMANDS ---
