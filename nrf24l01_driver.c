@@ -164,11 +164,8 @@ static long nrf24l01_ioctl(struct file *file, unsigned int cmd, unsigned long ar
             if (val < 1 || val > 124){
                 return -EINVAL;
             }  
-<<<<<<< HEAD
-=======
 
             mutex_lock(&dev -> priv_mutex);
->>>>>>> development
             
             // device off
             gpiod_set_value(dev->ce_gpio, 0);
@@ -179,11 +176,8 @@ static long nrf24l01_ioctl(struct file *file, unsigned int cmd, unsigned long ar
             // device on
             gpiod_set_value(dev->ce_gpio, 1);
 
-<<<<<<< HEAD
-=======
             mutex_unlock(&dev -> priv_mutex);
 
->>>>>>> development
             dev_info(&dev->spi->dev, "IOCTL: Channel set to %d\n", val);
             break;
 
@@ -195,11 +189,8 @@ static long nrf24l01_ioctl(struct file *file, unsigned int cmd, unsigned long ar
             if (val < 0 || val > 3){
                 return -EINVAL;
             } 
-<<<<<<< HEAD
-=======
 
             mutex_lock(&dev -> priv_mutex);
->>>>>>> development
             
             // device off
             gpiod_set_value(dev->ce_gpio, 0);
@@ -212,11 +203,8 @@ static long nrf24l01_ioctl(struct file *file, unsigned int cmd, unsigned long ar
             // device on
             gpiod_set_value(dev->ce_gpio, 1);
 
-<<<<<<< HEAD
-=======
             mutex_unlock(&dev -> priv_mutex);
 
->>>>>>> development
             dev_info(&dev->spi->dev, "IOCTL: Power set to level %d\n", val);
             break;
 
@@ -228,11 +216,8 @@ static long nrf24l01_ioctl(struct file *file, unsigned int cmd, unsigned long ar
             if (val != 1 && val != 2){
                 return -EINVAL;
             }
-<<<<<<< HEAD
-=======
 
             mutex_lock(&dev -> priv_mutex);
->>>>>>> development
             
             nrf_read_reg(dev, NRF_REG_RF_SETUP, &rf_setup);
             if (val == 1) {
@@ -251,18 +236,12 @@ static long nrf24l01_ioctl(struct file *file, unsigned int cmd, unsigned long ar
             // device on
             gpiod_set_value(dev->ce_gpio, 1);
 
-<<<<<<< HEAD
-=======
             mutex_unlock(&dev -> priv_mutex);
 
->>>>>>> development
             dev_info(&dev->spi->dev, "IOCTL: Speed set to %d\n", val);
             break;
 
         case NRF_IOCTL_GET_STATUS:
-<<<<<<< HEAD
-            nrf_read_reg(dev, NRF_REG_STATUS, &status_reg);
-=======
 
             mutex_lock(&dev -> priv_mutex);
             
@@ -270,7 +249,6 @@ static long nrf24l01_ioctl(struct file *file, unsigned int cmd, unsigned long ar
             
             mutex_unlock(&dev -> priv_mutex);
 
->>>>>>> development
             if (copy_to_user((unsigned char *)arg, &status_reg, sizeof(unsigned char))){
                 return -EFAULT;
             } 
