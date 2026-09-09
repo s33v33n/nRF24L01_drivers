@@ -163,6 +163,19 @@ static long nrf24l01_ioctl(struct file *file, unsigned int cmd, unsigned long ar
 
     switch(cmd) {
 
+        case NRF_IOCTL_GET_STATUS:
+
+            mutex_lock(&dev -> priv_mutex);
+            
+            nrf_read_reg(dev, NRF_REG_STATUS, &status_reg);
+            
+            mutex_unlock(&dev -> priv_mutex);
+
+            if (copy_to_user((unsigned char *)arg, &status_reg, sizeof(unsigned char))){
+                return -EFAULT;
+            } 
+            break;
+
         case NRF_IOCTL_SET_CHANNEL:
         
             if (copy_from_user(&val, (int *)arg, sizeof(int))){
@@ -248,15 +261,30 @@ static long nrf24l01_ioctl(struct file *file, unsigned int cmd, unsigned long ar
             dev_info(&dev->spi->dev, "IOCTL: Speed set to %d\n", val);
             break;
 
-        case NRF_IOCTL_GET_STATUS:
-
-            mutex_lock(&dev -> priv_mutex);
+        case NRF_IOCTL_GET_RF_CHANNEL:
+        
+            mutex_lock(&dev->priv_mutex);
             
-            nrf_read_reg(dev, NRF_REG_STATUS, &status_reg);
+            nrf_read_reg(dev, NRF_REG_RF_CH, &status_reg);
             
-            mutex_unlock(&dev -> priv_mutex);
+            mutex_unlock(&dev->priv_mutex);
 
-            if (copy_to_user((unsigned char *)arg, &status_reg, sizeof(unsigned char))){
+            val = status_reg; 
+
+            if (copy_to_user((unsigned int *)arg, &val, sizeof(unsigned int))){
+                return -EFAULT;
+            } 
+            break;
+
+        case NRF_IOCTL_GET_RF_SETUP:
+
+            mutex_lock(&dev->priv_mutex);
+    
+            nrf_read_reg(dev, NRF_REG_RF_SETUP, &rf_setup);
+
+            mutex_unlock(&dev->priv_mutex);
+
+            if (copy_to_user((unsigned char *)arg, &rf_setup, sizeof(unsigned char))){
                 return -EFAULT;
             } 
             break;

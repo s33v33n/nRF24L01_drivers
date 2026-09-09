@@ -20,6 +20,8 @@
 #   --- My app ---
 #   make make_app 	  - compile my app
 #   make run_app_n    - compile & run my app , n is device number
+#   make make_sniffer - compile sniffer
+#   make run_sniffer  - compile & run sniffer
 
 # Module name (without .ko extension)
 MODULE_NAME := nrf24l01
@@ -46,7 +48,8 @@ all:
 clean:
 	$(MAKE) -C $(KDIR) M=$(PWD) clean
 	rm -f test_ioctl
-	rm -f secure_chat	
+	rm -f secure_chat
+	rm -f sniffer	
 
 # Load module directly from .ko file (temporary - lost after reboot)
 load:
@@ -99,9 +102,17 @@ run_app_0: make_app
 run_app_1: make_app
 	sudo ./secure_chat /dev/nrf24l01_1 1234 9999
 
+# Compile my app - secure_chat 
+make_sniffer:
+	gcc sniffer.c -o sniffer
+
+# Run my app - device 0
+run_sniffer: make_sniffer
+	sudo ./sniffer
+
 # Show kernel logs 
 dmesg:
 	sudo dmesg | tail -30
 
 # these commands are just information for make, not output files
-.PHONY: all clean load unload reload dtbo dtbo_clean dtbo_load dtbo_unload dmesg make_ioctl run_ioctl make_app run_app_0 run_app_1
+.PHONY: all clean load unload reload dtbo dtbo_clean dtbo_load dtbo_unload dmesg make_ioctl run_ioctl make_app run_app_0 run_app_1 sniffer

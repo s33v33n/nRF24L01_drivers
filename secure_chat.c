@@ -17,6 +17,7 @@ unsigned long long shared_key = 0;
 
 bool sent_key = false;
 bool receive_key = false;
+bool use_encryption = true;
 
 void encrypt_decrypt(char *data, int len, unsigned long long key) {
     unsigned char *key_bytes = (unsigned char *)&key;
@@ -196,6 +197,61 @@ int main(int argc, char *argv[]) {
                     }
                 }
 
+                // read rf channel
+                else if (strncmp(buffer, "/rrfchannel", 11) == 0) {
+                
+                    fflush(stdout);
+                    
+                    unsigned int reg = 0;
+
+                    if (ioctl(nrf_file, NRF_IOCTL_GET_RF_CHANNEL, &reg) < 0) {
+                        perror("RF channel read error");
+                    } 
+                    else {
+                        printf("My RF channel: 0x%02X.\n", reg);
+                    }
+                }
+
+
+                // read rf setup
+                else if (strncmp(buffer, "/rrfsetup", 9) == 0) {
+                
+                    fflush(stdout);
+                    
+                    unsigned char reg = 0x00;
+
+                    if (ioctl(nrf_file, NRF_IOCTL_GET_RF_SETUP, &reg) < 0) {
+                        perror("RF setup read error");
+                    } 
+                    else {
+                        printf("My RF setup: 0x%02X.\n", reg);
+                    }
+                }
+
+                // turn off / on encryption
+                else if (strncmp(buffer, "/encryption", 11) == 0) {
+                    printf("0 - turn off, 1 - turn on, deafult is 1 :\n");
+                    fflush(stdout);
+                    
+                    int val = -1;
+                    if (scanf("%d", &val) == 1) {
+
+                        int c; 
+                        while ((c = getchar()) != '\n' && c != EOF);
+                        
+                        if (val == 1) {
+                            use_encryption = true;
+                            printf("Encryption ON.\n");
+                        } 
+                        else if (val == 0) {
+                            use_encryption = false;
+                            printf("Encryptio OFF.\n");
+                        } 
+                        else {
+                            printf("Input is out of range.\n");
+                        }
+                    }
+                }
 
                 // write to device (send message)
                 else{
@@ -204,7 +260,10 @@ int main(int argc, char *argv[]) {
 
                         int len = strlen(buffer);
 
-                        encrypt_decrypt(buffer, MAX_PAYLOAD, shared_key);
+                        if (use_encryption == true) {
+                            encrypt_decrypt(buffer, MAX_PAYLOAD, shared_key);
+                        }
+                        
                         int sent_bytes = write(nrf_file, buffer, MAX_PAYLOAD);
                     
                         if(sent_bytes < 0){
@@ -234,10 +293,17 @@ int main(int argc, char *argv[]) {
                     if(receive_key == false){
 
                         unsigned long long received_public = strtoull(buffer + 6, NULL, 10);
-                        shared_key = received_public * my_secret;
-                        receive_key = true;
 
-                        printf("\rReceived shared_key: %llu\n", shared_key);
+                        if (received_public == 0 || received_public % public_pin != 0) {
+                            printf("\rReceived wrong public key\n");
+                        }
+                        else{
+
+                            shared_key = received_public * my_secret;
+                            receive_key = true;
+
+                            printf("\rReceived shared_key: %llu\n", shared_key);
+                        }
                     }  
 
                     if (sent_key == false) {
@@ -246,7 +312,11 @@ int main(int argc, char *argv[]) {
                 }
 
                 else if (receive_key == true && sent_key == true) {
-                    encrypt_decrypt(buffer, bytes_read, shared_key);
+                    
+                    if (use_encryption == true) {
+                        encrypt_decrypt(buffer, MAX_PAYLOAD, shared_key);
+                    }
+
                     printf("\rReceived: %s\n", buffer);
                 }
 
