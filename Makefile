@@ -93,11 +93,11 @@ make_app:
 
 # Run my app - device 0
 run_app_0: make_app
-	sudo ./secure_chat /dev/nrf24l01_0
+	sudo ./secure_chat /dev/nrf24l01_0 1234 7777
 
 # Run my app - device 1
 run_app_1: make_app
-	sudo ./secure_chat /dev/nrf24l01_1
+	sudo ./secure_chat /dev/nrf24l01_1 1234 9999
 
 # Show kernel logs 
 dmesg:

@@ -5,15 +5,31 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <poll.h>
+#include <stdbool.h>
+#include <unistd.h>
 #include "nrf_ioctl.h" 
 
 #define MAX_PAYLOAD 32
 
+unsigned long long public_pin = 0;
+unsigned long long my_secret = 0;
+unsigned long long shared_key = 0;
+
+bool sent_key = false;
+bool receive_key = false;
+
+void encrypt_decrypt(char *data, int len, unsigned long long key) {
+    unsigned char *key_bytes = (unsigned char *)&key;
+    for (int i = 0; i < len; i++) {
+        data[i] ^= key_bytes[i % sizeof(unsigned long long)];
+    }
+}
+
 int main(int argc, char *argv[]) {
 
     // 1. Open device 
-    if (argc < 2) {
-        printf("Error, use script + device loction: ./secure_chat /dev/nrf24l01_n\n");
+    if (argc < 4) {
+        printf("Error, use script + device loction + public_key + private_key: ./secure_chat /dev/nrf24l01_n XXXX XXXX\n");
         return -1;
     }
 
@@ -32,22 +48,27 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    int speed = 1; // Mbs
+    int speed = 1; // Mbps
     if (ioctl(nrf_file, NRF_IOCTL_SET_SPEED, &speed) < 0) {
         printf("Channel setup failed");
         close(nrf_file); 
         return -1;
     }
 
-    int power = 0; // dBm | 0 - min , 3 - max 
+    int power = 3; // dBm | 0 - min , 3 - max 
     if (ioctl(nrf_file, NRF_IOCTL_SET_POWER, &power) < 0) {
         printf("Power setup failed");
         close(nrf_file); 
         return -1;
     }
 
-    printf("--- Device: %s ---\n", dev_name);
+    public_pin = strtoull(argv[2], NULL, 10);
+    my_secret = strtoull(argv[3], NULL, 10);
+
     printf("--- Channel: %d | Speed: %d Mbps --- Power: %d dBm ---\n", channel, speed, ((power * 6) - 18));
+    printf("--- Device: %s ---\n", dev_name);
+    printf("--- public_key: %s | private_key: %s ---\n", argv[2], argv[3]);
+
 
     // 3. Structs for kernel and poll 
     struct pollfd kernel_files[2];
@@ -82,9 +103,118 @@ int main(int argc, char *argv[]) {
                 // command check (remove \n)
                 buffer[strcspn(buffer, "\n")] = '\0';
 
-                // write to device
-                if (write(nrf_file, buffer, strlen(buffer)) < 0) {
-                        perror("Cannot send to device");
+                if(strncmp(buffer,"/connect",8) == 0 && sent_key == false){
+
+                    unsigned long long my_public = public_pin * my_secret;
+
+                    char msg[32];
+                    sprintf(msg, "P_KEY:%llu", my_public); 
+
+                    if(write(nrf_file, msg, strlen(msg)) < 0){
+                        printf("Key was not received.\n");
+                    }
+                    else{
+                        printf("Key was received\n");
+                        sent_key = true;
+                    }
+
+                    
+                }
+
+                // power setup
+                else if (strncmp(buffer, "/power", 6) == 0) {
+                    printf("Enter power from range <0,3> only int, corresponds 0 dBm, -6 dBm, -12 dBm, -18 dBm\n");
+                    
+                    //print value
+                    fflush(stdout); 
+                    
+                    int val = -1;
+                    if (scanf("%d", &val) == 1) {
+                        
+                        // clear ENTER
+                        int c; 
+                        while ((c = getchar()) != '\n' && c != EOF);
+                        
+                        if (val >= 0 && val <= 3) {
+                            if (ioctl(nrf_file, NRF_IOCTL_SET_POWER, &val) < 0) {
+                                perror("IOCTL error setup");
+                            } 
+                            else {
+                                printf("New power: %d dBm.\n", ((val * 6) - 18));
+                            }
+                        } 
+                        else {
+                            printf("Input is out of range\n");
+                        }
+                    }
+                }
+
+                // chennel setup
+                else if (strncmp(buffer, "/channel", 8) == 0) {
+                    printf("New channel: 2.4GHz + digit from range <1,124> only int\n");
+                    fflush(stdout);
+                    
+                    int val = -1;
+                    if (scanf("%d", &val) == 1) {
+                        int c; while ((c = getchar()) != '\n' && c != EOF);
+                        
+                        if (val >= 1 && val <= 124) {
+                            if (ioctl(nrf_file, NRF_IOCTL_SET_CHANNEL, &val) < 0) {
+                                perror("IOCTL error setup");
+                            } 
+                            else {
+                                printf("New channel %.3f GHz.\n", (float)val / 1000.0 + 2.4);
+                            }
+                        } 
+                        else {
+                            printf("Input is out of range\n");
+                        }
+                    }
+                }
+
+                // speed setup
+                else if (strncmp(buffer, "/speed", 6) == 0) {
+                
+                    printf("New speed (Mbps) only allowed 1 or 2\n");
+                    fflush(stdout);
+                    
+                    int val = -1;
+                    if (scanf("%d", &val) == 1) {
+                        int c; while ((c = getchar()) != '\n' && c != EOF);
+                        
+                        if (val == 1 || val == 2) {
+                            if (ioctl(nrf_file, NRF_IOCTL_SET_SPEED, &val) < 0) {
+                                perror("IOCTL error setup");
+                            } 
+                            else {
+                                printf("New speed: %d Mbps.\n", val);
+                            }
+                        } 
+                        else {
+                            printf("Input is out of range.\n");
+                        }
+                    }
+                }
+
+
+                // write to device (send message)
+                else{
+
+                    if(receive_key == true && sent_key == true){
+
+                        int len = strlen(buffer);
+
+                        encrypt_decrypt(buffer, MAX_PAYLOAD, shared_key);
+                        int sent_bytes = write(nrf_file, buffer, MAX_PAYLOAD);
+                    
+                        if(sent_bytes < 0){
+                            perror("Cannot send to device");
+                        }
+                        
+                    }
+                    else{
+                        printf("Keys were not shared - communication is blocked, only setup is availiable\n");
+                    }
                 } 
             }
         }
@@ -98,10 +228,42 @@ int main(int argc, char *argv[]) {
             
             if (bytes_read > 0) {
                 buffer[bytes_read] = '\0'; 
-                printf("\rReceived: %s\n", buffer); 
+ 
+                if(strncmp(buffer, "P_KEY:",6) == 0 && receive_key == false){
+
+                    if(receive_key == false){
+
+                        unsigned long long received_public = strtoull(buffer + 6, NULL, 10);
+                        shared_key = received_public * my_secret;
+                        receive_key = true;
+
+                        printf("\rReceived shared_key: %llu\n", shared_key);
+                    }  
+
+                    if (sent_key == false) {
+                        printf("\rType /connect to send your key and start communication\n");
+                    }
+                }
+
+                else if (receive_key == true && sent_key == true) {
+                    encrypt_decrypt(buffer, bytes_read, shared_key);
+                    printf("\rReceived: %s\n", buffer);
+                }
+
+                else{
+
+                    if (sent_key == false) {
+                        printf("\rGarbage received. Type /connect to send your key and start communication\n");
+                    } 
+                    else {
+                        printf("\rGarbage received. Key was not received from another side\n");
+                    }
+                }
             }
         }
+
     }
+
 
     close(nrf_file);
     return 0;

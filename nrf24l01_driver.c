@@ -388,7 +388,7 @@ static int nrf24l01_probe(struct spi_device *spi)
 
     // RF setup: Channel + Speed + TX power
     nrf_write_reg(dev, NRF_REG_RF_CH, 0x0F);       // f0 = 2400 MHz (channel 15)
-    nrf_write_reg(dev, NRF_REG_RF_SETUP, 0x01); // Power = -18 dBm, Speed = 1Mbit/s
+    nrf_write_reg(dev, NRF_REG_RF_SETUP, 0x07); // Power = -18 dBm, Speed = 1Mbit/s
     nrf_write_reg(dev, NRF_REG_RX_PW_P0, 32);   // RX payload size = 32 bytes 
 
     nrf_write_reg(dev, NRF_REG_EN_AA, 0x01);      // auto ACK on pipe 0
@@ -418,7 +418,7 @@ static int nrf24l01_probe(struct spi_device *spi)
     dev_info(&spi->dev, "RX_PW_P0 = 0x%02X, expected = 0x20\n", check_pw_p0);
     dev_info(&spi->dev, "CONFIG = 0x%02X, expected = 0x0F\n", check_config);
     dev_info(&spi->dev, "RF_CH = 0x%02X, expected = 0x0F\n", check_rf_ch);
-    dev_info(&spi->dev, "RF_SETUP = 0x%02X, expected = 0x01\n", check_rf_setup);
+    dev_info(&spi->dev, "RF_SETUP = 0x%02X, expected = 0x07\n", check_rf_setup);
     
     /* END OF SIMPLE CHECK */
 
