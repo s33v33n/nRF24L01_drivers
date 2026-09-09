@@ -13,10 +13,6 @@
 #   make dtbo_clean   - remove compiled overlay file
 #   make dmesg        - show last 30 kernel log lines
 #
-#   --- IOCTL ---
-#   make make_ioctl   - compile IOCTL program
-#   make run_ioctl    - compile & run IOCTL program
-#
 #   --- My app ---
 #   make make_app 	  - compile my app
 #   make run_app_n    - compile & run my app , n is device number
@@ -47,7 +43,6 @@ all:
 # Remove all build artifacts
 clean:
 	$(MAKE) -C $(KDIR) M=$(PWD) clean
-	rm -f test_ioctl
 	rm -f secure_chat
 	rm -f sniffer	
 
@@ -82,14 +77,6 @@ dtbo_unload:
 	sudo dtoverlay -r $(MODULE_NAME)
 	@echo "Overlay unloaded."
 
-# Compile IOCTL 
-make_ioctl:
-	gcc test_ioctl.c -o test_ioctl
-
-# Run IOCTL program
-run_ioctl: make_ioctl
-	sudo ./test_ioctl
-
 # Compile my app - secure_chat 
 make_app:
 	gcc secure_chat.c -o secure_chat
@@ -115,4 +102,4 @@ dmesg:
 	sudo dmesg | tail -30
 
 # these commands are just information for make, not output files
-.PHONY: all clean load unload reload dtbo dtbo_clean dtbo_load dtbo_unload dmesg make_ioctl run_ioctl make_app run_app_0 run_app_1 sniffer
+.PHONY: all clean load unload reload dtbo dtbo_clean dtbo_load dtbo_unload dmesg make_ioctl make_app run_app_0 run_app_1 sniffer

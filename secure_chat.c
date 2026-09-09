@@ -253,6 +253,46 @@ int main(int argc, char *argv[]) {
                     }
                 }
 
+                // Over The Air power change 
+                else if (strncmp(buffer, "/otapower", 9) == 0) {
+                    printf("OTA power change. Enter power from range <0,3> only int, corresponds 0 dBm, -6 dBm, -12 dBm, -18 dBm\n");
+                    fflush(stdout);
+                    
+                    int val = -1;
+                    if (scanf("%d", &val) == 1) {
+                        
+                        int c; 
+                        while ((c = getchar()) != '\n' && c != EOF);
+                        
+                        if (val >= 0 && val <= 3) {
+                            if (receive_key == true && sent_key == true) {
+                                char cmd_msg[MAX_PAYLOAD];
+                                memset(cmd_msg, 0, MAX_PAYLOAD);
+                                
+                                // create command message
+                                sprintf(cmd_msg, "OTA_PWR:%d", val);
+                                
+                                if (use_encryption == true) {
+                                    encrypt_decrypt(cmd_msg, MAX_PAYLOAD, shared_key);
+                                }
+                                
+                                if (write(nrf_file, cmd_msg, MAX_PAYLOAD) < 0) {
+                                    perror("Cannot send OTA command");
+                                } 
+                                else {
+                                    printf("OTA command sent.\n");
+                                }
+                            } 
+                            else {
+                                printf("Send keys first!\n");
+                            }
+                        } 
+                        else {
+                            printf("Input is out of range\n");
+                        }
+                    }
+                }
+
                 // write to device (send message)
                 else{
 
@@ -317,7 +357,28 @@ int main(int argc, char *argv[]) {
                         encrypt_decrypt(buffer, MAX_PAYLOAD, shared_key);
                     }
 
-                    printf("\rReceived: %s\n", buffer);
+                    if (strncmp(buffer, "OTA_PWR:", 8) == 0) {
+
+                        int ota_val = -1;
+            
+                        if (sscanf(buffer + 8, "%d", &ota_val) == 1) {
+
+                            if (ota_val >= 0 && ota_val <= 3) {
+
+                                if (ioctl(nrf_file, NRF_IOCTL_SET_POWER, &ota_val) < 0) {
+                                    perror("OTA power setup IOCTL error");
+                                } 
+                                else {
+                                    printf("\r[OTA]: Power changed: %d dBm.\n", ((ota_val * 6) - 18));
+                                }
+                            }
+                        }
+                    }
+                    else{
+                        printf("\rReceived: %s\n", buffer);
+                    }
+
+                    
                 }
 
                 else{
