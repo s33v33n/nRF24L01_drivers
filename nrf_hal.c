@@ -109,11 +109,13 @@ irqreturn_t nrf24l01_isr(int irq, void *dev_id)
     if (status & 0x20) { // TX_DS 
         dev_info(&dev->spi->dev, "Send packet - received ack.\n");
         dev->tx_done = true; 
+        dev->tx_success = true;
         wake_up_interruptible(&dev->tx_waitqueue); 
     }
     if (status & 0x10) { // MAX_RT
         dev_info(&dev->spi->dev, "Error - tx failed (ack).\n");
         dev->tx_done = true; 
+        dev->tx_success = false;
         wake_up_interruptible(&dev->tx_waitqueue); 
     }
 

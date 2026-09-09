@@ -22,7 +22,8 @@ struct nrf24l01_dev
 
     // transmit data 
     wait_queue_head_t tx_waitqueue;
-    bool tx_done;    
+    bool tx_done;  
+    bool tx_success;  
 
     // synchronization
     struct mutex priv_mutex;

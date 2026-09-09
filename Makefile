@@ -14,8 +14,12 @@
 #   make dmesg        - show last 30 kernel log lines
 #
 #   --- IOCTL ---
-#   make make_ioctl   - compile compile IOCTL program
+#   make make_ioctl   - compile IOCTL program
 #   make run_ioctl    - compile & run IOCTL program
+#
+#   --- My app ---
+#   make make_app 	  - compile my app
+#   make run_app_n    - compile & run my app , n is device number
 
 # Module name (without .ko extension)
 MODULE_NAME := nrf24l01
@@ -41,7 +45,8 @@ all:
 # Remove all build artifacts
 clean:
 	$(MAKE) -C $(KDIR) M=$(PWD) clean
-	rm -f test_ioctl	
+	rm -f test_ioctl
+	rm -f secure_chat	
 
 # Load module directly from .ko file (temporary - lost after reboot)
 load:
@@ -82,9 +87,21 @@ make_ioctl:
 run_ioctl: make_ioctl
 	sudo ./test_ioctl
 
+# Compile my app - secure_chat 
+make_app:
+	gcc secure_chat.c -o secure_chat
+
+# Run my app - device 0
+run_app_0: make_app
+	sudo ./secure_chat /dev/nrf24l01_0
+
+# Run my app - device 1
+run_app_1: make_app
+	sudo ./secure_chat /dev/nrf24l01_1
+
 # Show kernel logs 
 dmesg:
 	sudo dmesg | tail -30
 
 # these commands are just information for make, not output files
-.PHONY: all clean load unload reload dtbo dtbo_clean dtbo_load dtbo_unload dmesg make_ioctl run_ioctl
+.PHONY: all clean load unload reload dtbo dtbo_clean dtbo_load dtbo_unload dmesg make_ioctl run_ioctl make_app run_app_0 run_app_1

@@ -18,3 +18,4 @@
     - for transmitter `echo "Hi from channel 77" | sudo tee /dev/nrf24l01_1`
     - then check logs `make dmesg`, you may be required to resend the message because of transmission medium
 8. Mutex mechanism is supported - prevents conflict from user-space access.
+9. Added 100uF capacitor
