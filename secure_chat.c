@@ -20,9 +20,11 @@ bool receive_key = false;
 bool use_encryption = true;
 
 void encrypt_decrypt(char *data, int len, unsigned long long key) {
-    unsigned char *key_bytes = (unsigned char *)&key;
     for (int i = 0; i < len; i++) {
-        data[i] ^= key_bytes[i % sizeof(unsigned long long)];
+        int bits_to_shift = (i % 8) * 8; 
+        unsigned char key_byte = (key >> bits_to_shift) & 0xFF;
+        
+        data[i] ^= key_byte;
     }
 }
 

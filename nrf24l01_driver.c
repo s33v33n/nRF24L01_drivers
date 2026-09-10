@@ -49,11 +49,15 @@ static ssize_t nrf24l01_read(struct file *file, char __user *buf, size_t count, 
     struct nrf24l01_dev *dev = file->private_data;
     u8 rx_buf[32];
     size_t payload_len = count;
-    if (payload_len > 32)
+
+    if (payload_len > 32){
+
         payload_len = 32;
-    
+    }
+        
     if (wait_event_interruptible(dev->rx_waitqueue, dev->rx_data_ready)) {
-    return -ERESTARTSYS;
+
+        return -ERESTARTSYS; // restart system call
     }
 
     mutex_lock(&dev -> priv_mutex);
@@ -114,7 +118,7 @@ static ssize_t nrf24l01_write(struct file *file, const char __user *buf, size_t 
     // CE down 
     gpiod_set_value(dev->ce_gpio, 0); 
 
-    // radio 
+    // wait for radio (proccess sleep without cpu delay)
     wait_event_interruptible_timeout(dev->tx_waitqueue, dev->tx_done, msecs_to_jiffies(100));
 
     // return to RX mode 
@@ -143,7 +147,6 @@ static __poll_t nrf24l01_poll(struct file *file, poll_table *wait)
     poll_wait(file, &dev->rx_waitqueue, wait);
     poll_wait(file, &dev->tx_waitqueue, wait);
     
-
     if (dev->rx_data_ready) {
         mask |= (EPOLLIN | EPOLLRDNORM);
     }
@@ -151,6 +154,7 @@ static __poll_t nrf24l01_poll(struct file *file, poll_table *wait)
     if (dev->tx_done) {
         mask |= (EPOLLOUT | EPOLLWRNORM);
     }
+
     return mask;
 }
 
@@ -290,7 +294,7 @@ static long nrf24l01_ioctl(struct file *file, unsigned int cmd, unsigned long ar
             break;
 
         default:
-            return -ENOTTY; // Unknown command
+            return -ENOTTY; // Unknown command - error not a typewriter
     }
     return 0;
 }
@@ -310,7 +314,7 @@ static const struct file_operations nrf24l01_fops = {
 
 /* START OF DRIVER DESCRIPTION */
 
-// 1. Device declararion (compativility using SPI and DeviceTree)
+// 1. Device declararion (compatibility using SPI and DeviceTree)
 
 // SPI
 static const struct spi_device_id nrf24l01_spi_id[] = {
@@ -331,14 +335,13 @@ MODULE_DEVICE_TABLE(of, nrf24l01_of_match);
 //  3a. Probe and Remove functions
 static int nrf24l01_probe(struct spi_device *spi)
 {
-
     struct nrf24l01_dev *dev;
     int ret;
 
     // memory allocation for device (private data define), structure is filled with zeros
     dev = devm_kzalloc(&spi->dev, sizeof(*dev), GFP_KERNEL);
     if (!dev){
-        return -ENOMEM;
+        return -ENOMEM; // error no memeory 
     }
         
     mutex_init(&dev -> priv_mutex);
@@ -381,6 +384,8 @@ static int nrf24l01_probe(struct spi_device *spi)
             .len = 2,
         };
 
+        // for first byte nRF returns STATUS register
+
         struct spi_message m;
         spi_message_init(&m);
         spi_message_add_tail(&t, &m);
@@ -394,12 +399,14 @@ static int nrf24l01_probe(struct spi_device *spi)
 
         dev_info(&spi->dev, "STATUS = 0x%02X, CONFIG = 0x%02X\n", rx[0], rx[1]);
 
-        if (rx[1] == 0x00 || rx[1] == 0xFF)
+        if (rx[1] == 0x00 || rx[1] == 0xFF){
             dev_warn(&spi->dev, "Unexpected CONFIG value - check wiring!\n");
+        }
+            
     }
 
     {
-        const char *model_name = "default - safety mechnism"; // safety mechnism - if not defined in dts
+        const char *model_name = "default - safety mechnism, model name not defined"; // safety mechnism - if not defined in dts
 
         if (spi->dev.of_node)
         {
@@ -412,11 +419,11 @@ static int nrf24l01_probe(struct spi_device *spi)
     /* START OF NRF24 HARDWARE INIT */
 
     // optionally - if device is working less than 15ms   
-    // msleep(15);
+    msleep(15);
 
     // RF setup: Channel + Speed + TX power
     nrf_write_reg(dev, NRF_REG_RF_CH, 0x0F);       // f0 = 2400 MHz (channel 15)
-    nrf_write_reg(dev, NRF_REG_RF_SETUP, 0x07); // Power = -18 dBm, Speed = 1Mbit/s
+    nrf_write_reg(dev, NRF_REG_RF_SETUP, 0x01); // Power = -18 dBm, Speed = 1Mbit/s
     nrf_write_reg(dev, NRF_REG_RX_PW_P0, 32);   // RX payload size = 32 bytes 
 
     nrf_write_reg(dev, NRF_REG_EN_AA, 0x01);      // auto ACK on pipe 0
@@ -430,6 +437,8 @@ static int nrf24l01_probe(struct spi_device *spi)
     nrf_write_reg(dev, NRF_REG_STATUS, 0x70);
 
     msleep(2); // start up wait 1.5ms 
+
+    /* END OF NRF24 HARDWARE INIT */
     
     /* START OF SIMPLE CHECK */  
     
@@ -444,13 +453,11 @@ static int nrf24l01_probe(struct spi_device *spi)
     nrf_read_reg(dev, NRF_REG_RF_SETUP, &check_rf_setup);
 
     dev_info(&spi->dev, "RX_PW_P0 = 0x%02X, expected = 0x20\n", check_pw_p0);
-    dev_info(&spi->dev, "CONFIG = 0x%02X, expected = 0x0F\n", check_config);
+    dev_info(&spi->dev, "CONFIG = 0x%02X, expected = 0x07\n", check_config);
     dev_info(&spi->dev, "RF_CH = 0x%02X, expected = 0x0F\n", check_rf_ch);
-    dev_info(&spi->dev, "RF_SETUP = 0x%02X, expected = 0x07\n", check_rf_setup);
+    dev_info(&spi->dev, "RF_SETUP = 0x%02X, expected = 0x01\n", check_rf_setup);
     
     /* END OF SIMPLE CHECK */
-
-    /* END OF NRF24 HARDWARE INIT */
 
     // Set device to listening mode
 
@@ -499,7 +506,6 @@ static int nrf24l01_probe(struct spi_device *spi)
 // 3b. Remove function
 static void nrf24l01_remove(struct spi_device *spi)
 {
-
     // get private data
     struct nrf24l01_dev *dev = spi_get_drvdata(spi);
     int ret;
