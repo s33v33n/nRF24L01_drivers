@@ -74,3 +74,54 @@ void generate_chacha20_block(
             output_block[i] = chacha_block[i] + working_chacha_block[i];
         }  
 }
+
+void poly1305(
+    uint32_t chacha_block[CHACHA_BLOCKS],
+    unsigned char *message, 
+    size_t length,
+    unsigned char authenticate[POLY_BLOCKS]
+    ){
+
+        uint32_t r[4] = {0};
+        uint32_t s[4] = {0};
+
+        // 1. Init value 
+        for(int i=0; i < 4; i++){
+            r[i] = chacha_block[i];
+            s[i] = chacha_block[i + 4];
+        }
+
+        // 2. 16-byte block 
+        unsigned char block[17] = {0};
+        int bytes = 0;
+        for(bytes; bytes < length; bytes++){
+            block[bytes] = message[bytes];
+        }
+        block[bytes] = 0x01;
+
+        // 3. Clamp function
+        r[0] &= 0x0fffffff;
+        r[1] &= 0x0ffffffc;
+        r[2] &= 0x0ffffffc;
+        r[3] &= 0x0ffffffc;
+
+        // 4. poly init
+        uint32_t h[5] = {0};
+
+        // 5. My message init
+        uint32_t m[5] = {0};
+        m[0] = block[0] | (block[1] << 8) | (block[2] << 16) | (block[3] << 24);
+        m[1] = block[4] | (block[5] << 8) | (block[6] << 16) | (block[7] << 24);
+        m[2] = block[8] | (block[9] << 8) | (block[10] << 16) | (block[11] << 24);
+        m[3] = block[12] | (block[13] << 8) | (block[14] << 16) | (block[15] << 24);
+        m[4] = block[16];
+
+        // 6. h = h + m (with carry)
+        uint64_t carry = 0;
+        for(int i=0; i < 4;i++){
+            carry = (uint64_t)h[i] + m[i] + carry; 
+            h[i] = carry; 
+            carry >>= 32; 
+        }
+        h[4] = m[4] + carry;
+}
