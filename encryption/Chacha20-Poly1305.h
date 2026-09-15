@@ -8,6 +8,7 @@
 #define KEY_BLOCKS      8
 #define ROUNDS          10
 #define CHACHA_BLOCKS   16
+#define POLY_BLOCKS     16
 #define MESSAGE_LENGTH  32
 
 #define ROTATE_INT_32(val, n) (((val) << (n)) | ((val) >> (32 - (n))))
