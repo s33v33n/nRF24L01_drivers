@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "Chacha20.h"
+#include "Chacha20-Poly1305.h"
 
 int main(){
 
