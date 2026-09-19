@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include <stddef.h>
-#include "Chacha20.h"
+#include "Chacha20-Poly1305.h"
 
 void combine_chacha20_block_and_message(
     uint32_t prepared_chacha_block[CHACHA_BLOCKS], 
