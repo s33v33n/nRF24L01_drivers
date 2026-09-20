@@ -13,7 +13,6 @@ int main(){
 
     int nodes_counter = sizeof(nrf_nodes) / sizeof(nrf_nodes[0]);
 
-    int counter = 0;
     for(int i=0; i < nodes_counter; i++){
 
         // check name
