@@ -9,33 +9,33 @@
 	#size-cells = <0>;
 	status = "okay";
 	
-	cs-gpios = <&gpio 8 1>;
+	cs-gpios = <&gpio __CS_PIN_SPI0__ 1>;
 
 	nrf24l01_spi0: nrf24l01@0 {
-		status = "okay";
+		status = "__STATUS_0__";
 		compatible = "nordic,nrf24l01";
-		dev-name = "nrf_garden";
+		dev-name = "__DEV_NAME_0__";
 
 		// only one cs pin 
 		reg = <0>;
 		
 		interrupt-parent = <&gpio>;
-		interrupts = <23 2>;
-		spi-max-frequency = <8000000>;
-		ce-gpios = <&gpio 24 0>;
+		interrupts = <__IRQ_PIN_0__ 2>;
+		spi-max-frequency = <__SPI_SPEED_0__>;
+		ce-gpios = <&gpio __CE_PIN_0__ 0>;
 	};
 };
 
 &gpio {
 	spi1_pins_overlay: spi1_pins_overlay {
-		brcm,pins = <19 20 21>;
+		brcm,pins = <__SPI1_MISO__ __SPI1_MOSI__ __SPI1_SCLK__>;
 		brcm,function = <3>;
 		brcm,pull = <2 0 0>;
 	};
 	spi1_cs_overlay: spi1_cs_overlay {
 		
 		// only one cs pin
-		brcm,pins = <18>;
+		brcm,pins = <__CS_PIN_SPI1__>;
 		brcm,function = <1>;
 		brcm,pull = <0>;
 	};
@@ -46,18 +46,18 @@
 	#size-cells = <0>;
 	status = "okay";
 	
-	cs-gpios = <&gpio 18 1>;
+	cs-gpios = <&gpio __CS_PIN_SPI1__ 1>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&spi1_pins_overlay &spi1_cs_overlay>;
 
 	nrf24l01_spi1: nrf24l01@0 {
-		status = "okay";
+		status = "__STATUS_1__";
 		compatible = "nordic,nrf24l01";
-		dev-name = "nrf_garage";
+		dev-name = "__DEV_NAME_1__";
 		reg = <0>;
 		interrupt-parent = <&gpio>;
-		interrupts = <6 2>;
-		spi-max-frequency = <8000000>;
-		ce-gpios = <&gpio 5 0>;
+		interrupts = <__IRQ_PIN_1__ 2>;
+		spi-max-frequency = <__SPI_SPEED_1__>;
+		ce-gpios = <&gpio __CE_PIN_1__ 0>;
 	};
 };
