@@ -49,5 +49,14 @@ struct nrf24l01_dev
 #define NRF_REG_RX_PW_P0      0x11 // Payload width for pipe 0
 #define NRF_REG_FIFO_STATUS   0x17 // FIFO status 
 
+// pipes
+#define NRF_REG_RX_ADDR_P0    0x0A // RX address pipe 0
+#define NRF_REG_RX_ADDR_P1    0x0B // RX address pipe 1 
+#define NRF_REG_RX_ADDR_P2    0x0C // RX address pipe 2
+#define NRF_REG_RX_ADDR_P3    0x0D // RX address pipe 3
+#define NRF_REG_RX_ADDR_P4    0x0E // RX address pipe 4
+#define NRF_REG_RX_ADDR_P5    0x0F // RX address pipe 5
+#define NRF_REG_TX_ADDR       0x10 // TX address
+
 
 #endif // NRF24L01_H
