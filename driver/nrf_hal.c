@@ -94,6 +94,30 @@ int nrf_read_payload(struct nrf24l01_dev *dev, u8 *buf, size_t len)
     return spi_sync(dev->spi, &m);
 }
 
+int nrf_write_pipe_register(struct nrf24l01_dev *dev, u8 reg, const u8 *buf, size_t len){
+
+    u8 tx_cmd = NRF_CMD_W_REGISTER | reg;
+    
+    struct spi_transfer t[2] = {
+        [0] = { 
+            .tx_buf = &tx_cmd, 
+            .len = 1, 
+        },
+        [1] = { 
+            .tx_buf = buf, 
+            .len = len,
+        }
+    };
+    
+    struct spi_message m;
+    
+    spi_message_init(&m);
+    spi_message_add_tail(&t[0], &m);
+    spi_message_add_tail(&t[1], &m);
+
+    return spi_sync(dev->spi, &m);
+}
+
 irqreturn_t nrf24l01_isr(int irq, void *dev_id)
 {
     struct nrf24l01_dev *dev = dev_id;

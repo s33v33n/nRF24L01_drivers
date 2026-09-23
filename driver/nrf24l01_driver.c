@@ -293,6 +293,13 @@ static long nrf24l01_ioctl(struct file *file, unsigned int cmd, unsigned long ar
             } 
             break;
 
+        //TODO    
+        case NRF_IOCTL_SET_RX_ADDR:
+            
+        //TODO
+        case NRF_IOCTL_SET_TX_ADDR:
+            
+
         default:
             return -ENOTTY; // Unknown command - error not a typewriter
     }
