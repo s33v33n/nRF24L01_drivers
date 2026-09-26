@@ -164,6 +164,14 @@ static long nrf24l01_ioctl(struct file *file, unsigned int cmd, unsigned long ar
     int val;
     unsigned char status_reg;
     unsigned char rf_setup;
+    
+    // nrf pipes
+    struct nrf_pipe_config pipe_config;
+    unsigned long long tx_addr;
+    unsigned char enable_rxaddr;
+    unsigned char reg_tx_addr;
+    unsigned char reg_rx_addr;
+    size_t bytes_to_write;
 
     switch(cmd) {
 
@@ -292,13 +300,65 @@ static long nrf24l01_ioctl(struct file *file, unsigned int cmd, unsigned long ar
                 return -EFAULT;
             } 
             break;
-
-        //TODO    
+ 
         case NRF_IOCTL_SET_RX_ADDR:
+
+            if(copy_from_user(&pipe_config, (struct nrf_pipe_config *)arg, sizeof(struct nrf_pipe_config))){
+                return -EFAULT;
+            }
+
+            if(pipe_config.pipe_num > 5){
+                return -EINVAL;
+            }
+
+            // pipe register 
+            reg_rx_addr = NRF_REG_RX_ADDR_P0 + pipe_config.pipe_num;
+
+            // set pipe address for pipe 0, 1
+            if(pipe_config.pipe_num <= 1){
+                bytes_to_write = 5;
+            }
+            //shared bytes for pipes 2-5
+            else{
+                bytes_to_write = 1;
+            }
+
+            mutex_lock(&dev->priv_mutex);
+            gpiod_set_value(dev->ce_gpio, 0);
             
-        //TODO
+            nrf_write_pipe_register(dev, reg_rx_addr, (const u8 *)&pipe_config.address, bytes_to_write);
+            
+            // enable this pipe register
+            nrf_read_reg(dev, NRF_REG_EN_RXADDR, &enable_rxaddr);
+            enable_rxaddr |= (1 << pipe_config.pipe_num);
+            nrf_write_reg(dev, NRF_REG_EN_RXADDR, enable_rxaddr);
+
+            gpiod_set_value(dev->ce_gpio, 1);
+            mutex_unlock(&dev->priv_mutex);
+
+            dev_info(&dev->spi->dev, "RX pipe enabled: address: %llu number: %d\n", pipe_config.address, pipe_config.pipe_num);
+            break;
+
         case NRF_IOCTL_SET_TX_ADDR:
+
+            reg_tx_addr = NRF_REG_TX_ADDR;
+            reg_rx_addr = NRF_REG_RX_ADDR_P0;
+            bytes_to_write = 5;
+
+            if(copy_from_user(&tx_addr, (unsigned long long *)arg, sizeof(unsigned long long))){
+                return -EFAULT;
+            }
+
+            mutex_lock(&dev->priv_mutex);
+            gpiod_set_value(dev->ce_gpio, 0);
+
+            nrf_write_pipe_register(dev, reg_tx_addr, (const u8 *)&tx_addr, bytes_to_write);
             
+            // when transmitting pipe 0 must be the same as tx_addr for ACK
+            nrf_write_pipe_register(dev, reg_rx_addr, (const u8 *)&tx_addr, bytes_to_write);
+
+            dev_info(&dev->spi->dev, "TX pipe enabled: address: %llu\n", tx_addr);
+            break;
 
         default:
             return -ENOTTY; // Unknown command - error not a typewriter
