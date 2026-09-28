@@ -565,7 +565,7 @@ static int nrf24l01_probe(struct spi_device *spi)
     }
 
     // create device file in /dev/nrf24l01
-    device_create(nrf24l01_class, &spi->dev, MKDEV(MAJOR(nrf24l01_devt), dev->minor), NULL, "nrf24l01_%d", dev->minor);
+    device_create(nrf24l01_class, &spi->dev, MKDEV(MAJOR(nrf24l01_devt), dev->minor), NULL, "%s", model_name);
     
     return 0;
 }
