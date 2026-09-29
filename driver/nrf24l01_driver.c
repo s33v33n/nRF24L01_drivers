@@ -161,7 +161,7 @@ static __poll_t nrf24l01_poll(struct file *file, poll_table *wait)
 static long nrf24l01_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
     struct nrf24l01_dev *dev = file->private_data;
-    int val;
+    u8 val;
     unsigned char status_reg;
     unsigned char rf_setup;
     
@@ -183,14 +183,14 @@ static long nrf24l01_ioctl(struct file *file, unsigned int cmd, unsigned long ar
             
             mutex_unlock(&dev -> priv_mutex);
 
-            if (copy_to_user((unsigned char *)arg, &status_reg, sizeof(unsigned char))){
+            if (copy_to_user((u8 *)arg, &status_reg, sizeof(u8))){
                 return -EFAULT;
             } 
             break;
 
         case NRF_IOCTL_SET_CHANNEL:
         
-            if (copy_from_user(&val, (int *)arg, sizeof(int))){
+            if (copy_from_user(&val, (u8 *)arg, sizeof(u8))){
                 return -EFAULT;
             } 
             if (val < 1 || val > 124){
@@ -215,7 +215,7 @@ static long nrf24l01_ioctl(struct file *file, unsigned int cmd, unsigned long ar
 
         case NRF_IOCTL_SET_POWER:
             
-            if (copy_from_user(&val, (int *)arg, sizeof(int))){
+            if (copy_from_user(&val, (u8 *)arg, sizeof(u8))){
                 return -EFAULT;
             } 
             if (val < 0 || val > 3){
@@ -242,7 +242,7 @@ static long nrf24l01_ioctl(struct file *file, unsigned int cmd, unsigned long ar
 
         case NRF_IOCTL_SET_SPEED:
             
-            if (copy_from_user(&val, (int *)arg, sizeof(int))){
+            if (copy_from_user(&val, (u8 *)arg, sizeof(u8))){
                 return -EFAULT;
             } 
             if (val != 1 && val != 2){
@@ -283,7 +283,7 @@ static long nrf24l01_ioctl(struct file *file, unsigned int cmd, unsigned long ar
 
             val = status_reg; 
 
-            if (copy_to_user((unsigned int *)arg, &val, sizeof(unsigned int))){
+            if (copy_to_user((u8*)arg, &val, sizeof(u8))){
                 return -EFAULT;
             } 
             break;
@@ -296,7 +296,7 @@ static long nrf24l01_ioctl(struct file *file, unsigned int cmd, unsigned long ar
 
             mutex_unlock(&dev->priv_mutex);
 
-            if (copy_to_user((unsigned char *)arg, &rf_setup, sizeof(unsigned char))){
+            if (copy_to_user((u8*)arg, &rf_setup, sizeof(u8))){
                 return -EFAULT;
             } 
             break;
@@ -345,7 +345,7 @@ static long nrf24l01_ioctl(struct file *file, unsigned int cmd, unsigned long ar
             reg_rx_addr = NRF_REG_RX_ADDR_P0;
             bytes_to_write = 5;
 
-            if(copy_from_user(&tx_addr, (unsigned long long *)arg, sizeof(unsigned long long))){
+            if(copy_from_user(&tx_addr, (u64 *)arg, sizeof(u64))){
                 return -EFAULT;
             }
 
@@ -472,16 +472,14 @@ static int nrf24l01_probe(struct spi_device *spi)
             
     }
 
+    const char *model_name = "default - safety mechnism, model name not defined"; // safety mechnism - if not defined in dts
+
+    if (spi->dev.of_node)
     {
-        const char *model_name = "default - safety mechnism, model name not defined"; // safety mechnism - if not defined in dts
-
-        if (spi->dev.of_node)
-        {
-            ret = of_property_read_string(spi->dev.of_node, "model", &model_name);
-        }
-
-        dev_info(&spi->dev, "Device [%s] probed successfully\n", model_name);
+        ret = of_property_read_string(spi->dev.of_node, "model", &model_name);
     }
+
+    dev_info(&spi->dev, "Device [%s] probed successfully\n", model_name);
 
     /* START OF NRF24 HARDWARE INIT */
 

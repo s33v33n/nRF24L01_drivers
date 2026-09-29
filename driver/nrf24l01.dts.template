@@ -9,12 +9,12 @@
 	#size-cells = <0>;
 	status = "okay";
 	
-	cs-gpios = <&gpio __CS_PIN_SPI0__ 1>;
+	// cs-gpios = <&gpio __CS_PIN_SPI0__ 1>;
 
 	nrf24l01_spi0: nrf24l01@0 {
 		status = "__STATUS_0__";
 		compatible = "nordic,nrf24l01";
-		dev-name = "__DEV_NAME_0__";
+		model = "__DEV_NAME_0__";
 
 		// only one cs pin 
 		reg = <0>;
@@ -47,13 +47,14 @@
 	status = "okay";
 	
 	cs-gpios = <&gpio __CS_PIN_SPI1__ 1>;
+	
 	pinctrl-names = "default";
 	pinctrl-0 = <&spi1_pins_overlay &spi1_cs_overlay>;
 
 	nrf24l01_spi1: nrf24l01@0 {
 		status = "__STATUS_1__";
 		compatible = "nordic,nrf24l01";
-		dev-name = "__DEV_NAME_1__";
+		model = "__DEV_NAME_1__";
 		reg = <0>;
 		interrupt-parent = <&gpio>;
 		interrupts = <__IRQ_PIN_1__ 2>;

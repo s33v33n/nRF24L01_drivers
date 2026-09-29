@@ -54,7 +54,6 @@ int nrf_init(){
 
     //------ configure node (master or slave) ------
 
-
     char *dev_file = NULL;
     if (asprintf(&dev_file, "/dev/%s", node_config.name) == -1) {
         fprintf(stderr, "Not enough memory for device allocation!\n");
@@ -71,10 +70,46 @@ int nrf_init(){
 
     free(dev_file);
 
-    //TODO 
-
     /* IOCTL module configuration */
 
+    struct nrf_pipe_config rx_pipe_config ={
+        .pipe_num = node_config.rx_pipe_num,
+        .address = node_config.rx_pipe_addr
+    };
+
+    // RX address
+    if(ioctl(nrf_fd, NRF_IOCTL_SET_RX_ADDR, &rx_pipe_config) < 0){
+        perror("IOCTL: cannot write rx pipe config");
+        return -1;
+    }
+
+    // TX address
+    if(ioctl(nrf_fd, NRF_IOCTL_SET_TX_ADDR, &master_config.rx_pipe_addr) < 0){
+        perror("IOCTL: cannot write tx adderss");
+        return -1;
+    }
+
+    // RF channel
+    if (ioctl(nrf_fd, NRF_IOCTL_SET_CHANNEL, &node_config.channel) < 0) {
+        perror("IOCTL: cannot set rf channel");
+        return -1;
+    }
+    
+    // RF power
+    if (ioctl(nrf_fd, NRF_IOCTL_SET_POWER, &node_config.power) < 0) {
+        perror("IOCTL: cannot set power level");
+        return -1;
+    }
+    
+    // RF speed
+    if (ioctl(nrf_fd, NRF_IOCTL_SET_SPEED, &node_config.speed) < 0) {
+        perror("IOCTL: cannot set speed level");
+        return -1;
+    }
+
+    printf("Module %s init successfully\n",node_config.name);
+    
+    return 0;
 }
 
 int nrf_send(){

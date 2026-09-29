@@ -33,13 +33,20 @@ int main(){
             }
         }
 
-        // check address 
-        uint64_t uniqe_addr = nrf_nodes[i].address;
+        // check rx pipe number
+        uint64_t uniqe_addr = nrf_nodes[i].rx_pipe_addr;
         for(int j=i+1; j < nodes_counter; j++){
-            if(uniqe_addr == nrf_nodes[j].address){
+            if(uniqe_addr == nrf_nodes[j].rx_pipe_addr){
                 printf("The same address for nodes %d and %d\n", i, j);
                 return -1;
             }
+        }
+
+       // check channel 
+        uint8_t pipe_number = nrf_nodes[i].rx_pipe_num;
+        if(pipe_number > 5){
+            printf("Node: %d error - enter pipe number as uint from range <0, 5>, current pipe number: %d\n",i, pipe_number);
+            return -1;
         }
 
         // check channel 

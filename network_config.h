@@ -55,8 +55,10 @@ static const uint32_t NRF_NETWORK_KEY[8] = {
 
 struct nrf_node_config{
     char *name;
+    uint64_t tx_address;
+    uint64_t rx_pipe_addr;
+    uint8_t rx_pipe_num;
     uint8_t id;
-    uint64_t address;
     uint8_t channel;
     uint8_t power;
     uint8_t speed;
@@ -66,8 +68,8 @@ struct nrf_node_config{
 // ------ My nodes ------
 static const struct nrf_node_config nrf_nodes[] = {
 
-    {DEV_NAME_SPI0, 1, 0xAABBCCDD01ULL, 15, 3, 0},
-    {DEV_NAME_SPI1, 2, 0xAABBCCDD02ULL, 15, 3, 0}
+    {DEV_NAME_SPI0, 0x00, 0xAABBCCDD01ULL, 0, 1, 15, 3, 0},
+    {DEV_NAME_SPI1, 0x00, 0xAABBCCDD02ULL, 0, 2, 15, 3, 0}
 };
 
 
