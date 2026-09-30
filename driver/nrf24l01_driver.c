@@ -28,7 +28,6 @@ static int nrf24l01_minor_counter = 0;
 static int nrf24l01_open(struct inode *inode, struct file *file)
 {
     // retrieve hardware data and store it in current file session
-
     struct nrf24l01_dev *dev = container_of(inode->i_cdev, struct nrf24l01_dev, cdev);
     file->private_data = dev;
 
@@ -408,15 +407,10 @@ static int nrf24l01_probe(struct spi_device *spi)
     // memory allocation for device (private data define), structure is filled with zeros
     dev = devm_kzalloc(&spi->dev, sizeof(*dev), GFP_KERNEL);
     if (!dev){
-        return -ENOMEM; // error no memeory 
+        return -ENOMEM; // error no memory 
     }
         
     mutex_init(&dev -> priv_mutex);
-
-    // spi cinfiguration
-    spi->mode = SPI_MODE_0;
-    spi->bits_per_word = 8;
-    spi->max_speed_hz = 8000000; // 8 MHz
 
     ret = spi_setup(spi);
     if (ret < 0)

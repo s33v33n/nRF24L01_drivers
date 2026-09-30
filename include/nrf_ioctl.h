@@ -17,26 +17,26 @@ struct nrf_pipe_config {
 
 #define NRF_MAGIC 'N'
 
-// Write 
+// Write number 
 #define SET_CHANNEL_SEQ_NO  0x01
 #define SET_POWER_SEQ_NO    0x02
 #define SET_SPEED_SEQ_NO    0x03
 #define SET_RX_ADDR_SEQ_NO  0x04
 #define SET_TX_ADDR_SEQ_NO  0x05
 
-// Read 
+// Read number 
 #define GET_RF_CHANNEL      0x06
 #define GET_RF_SETUP        0x07
 #define GET_STATUS_SEQ_NO   0x08
 
-// Write
+// Write ioctl macro
 #define NRF_IOCTL_SET_CHANNEL       _IOW(NRF_MAGIC, SET_CHANNEL_SEQ_NO, uint8_t)
 #define NRF_IOCTL_SET_POWER         _IOW(NRF_MAGIC, SET_POWER_SEQ_NO, uint8_t)
 #define NRF_IOCTL_SET_SPEED         _IOW(NRF_MAGIC, SET_SPEED_SEQ_NO, uint8_t)
 #define NRF_IOCTL_SET_RX_ADDR       _IOW(NRF_MAGIC, SET_RX_ADDR_SEQ_NO, struct nrf_pipe_config)
 #define NRF_IOCTL_SET_TX_ADDR       _IOW(NRF_MAGIC, SET_TX_ADDR_SEQ_NO, uint64_t)
 
-// Read
+// Read ioctl macro
 #define NRF_IOCTL_GET_STATUS        _IOR(NRF_MAGIC, GET_STATUS_SEQ_NO, uint8_t)
 #define NRF_IOCTL_GET_RF_CHANNEL    _IOR(NRF_MAGIC, GET_RF_CHANNEL, uint8_t)
 #define NRF_IOCTL_GET_RF_SETUP      _IOR(NRF_MAGIC, GET_RF_SETUP, uint8_t)
