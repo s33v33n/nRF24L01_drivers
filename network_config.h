@@ -1,14 +1,7 @@
 #ifndef NETWORK_CONFIG_H
 #define NETWORK_CONFIG_H
 
-#ifdef __KERNEL__
-    #include <linux/types.h> // kernel types
-#else
-    #include <stdint.h>      // user-space types
-#endif
-
 #define DRIVER_NAME "nrf24l01" // !!! Do not touch - makefile and devietree dependency !!! 
-
 
 #define NRF_NDEVICES 2
 #define NRF_MAX_PAYLOAD_SIZE 32

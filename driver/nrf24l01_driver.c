@@ -378,6 +378,7 @@ static const struct file_operations nrf24l01_fops = {
 
 /* END OF FILE_OPERATIONS   */
 
+// TODO - verify driver's code and nrf setup during probe function
 
 /* START OF DRIVER DESCRIPTION */
 
