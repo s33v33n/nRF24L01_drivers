@@ -14,9 +14,7 @@
 #include "nrf_device.h"
 #include "nrf_hal.h"
 #include "nrf_ioctl.h"
-
-#define NRF_NDEVICES 2
-#define DRIVER_NAME "nrf24l01"
+#include "../network_config.h"
 
 static dev_t nrf24l01_devt;
 static struct class *nrf24l01_class;
@@ -46,12 +44,12 @@ static int nrf24l01_release(struct inode *inode, struct file *file)
 static ssize_t nrf24l01_read(struct file *file, char __user *buf, size_t count, loff_t *offset)
 {
     struct nrf24l01_dev *dev = file->private_data;
-    u8 rx_buf[32];
+    u8 rx_buf[NRF_MAX_PAYLOAD_SIZE];
     size_t payload_len = count;
 
-    if (payload_len > 32){
+    if (payload_len > NRF_MAX_PAYLOAD_SIZE){
 
-        payload_len = 32;
+        payload_len = NRF_MAX_PAYLOAD_SIZE;
     }
         
     if (wait_event_interruptible(dev->rx_waitqueue, dev->rx_data_ready)) {
@@ -79,12 +77,13 @@ static ssize_t nrf24l01_read(struct file *file, char __user *buf, size_t count, 
 static ssize_t nrf24l01_write(struct file *file, const char __user *buf, size_t count, loff_t *offset)
 {
     struct nrf24l01_dev *dev = file->private_data;
-    u8 tx_buf[32] = {0}; 
+    u8 tx_buf[NRF_MAX_PAYLOAD_SIZE] = {0}; 
 
     size_t payload_len = count;
-    if (payload_len > 32)
-        payload_len = 32;
-
+    if (payload_len > NRF_MAX_PAYLOAD_SIZE){
+        payload_len = NRF_MAX_PAYLOAD_SIZE;
+    }
+    
     // Copy data from user space to kernel space
     if (copy_from_user(tx_buf, buf, payload_len)) {
         return -EFAULT;
@@ -107,7 +106,7 @@ static ssize_t nrf24l01_write(struct file *file, const char __user *buf, size_t 
     nrf_write_reg(dev, NRF_REG_STATUS, 0x70);
 
     // Write data to device
-    nrf_write_payload(dev, tx_buf, 32);
+    nrf_write_payload(dev, tx_buf, NRF_MAX_PAYLOAD_SIZE);
 
     // CE up
     gpiod_set_value(dev->ce_gpio, 1);
@@ -483,7 +482,7 @@ static int nrf24l01_probe(struct spi_device *spi)
     // RF setup: Channel + Speed + TX power
     nrf_write_reg(dev, NRF_REG_RF_CH, 0x0F);       // f0 = 2400 MHz (channel 15)
     nrf_write_reg(dev, NRF_REG_RF_SETUP, 0x01); // Power = -18 dBm, Speed = 1Mbit/s
-    nrf_write_reg(dev, NRF_REG_RX_PW_P0, 32);   // RX payload size = 32 bytes 
+    nrf_write_reg(dev, NRF_REG_RX_PW_P0, NRF_MAX_PAYLOAD_SIZE);   // RX payload size = 32 bytes 
 
     nrf_write_reg(dev, NRF_REG_EN_AA, 0x01);      // auto ACK on pipe 0
     nrf_write_reg(dev, NRF_REG_EN_RXADDR, 0x01);  // Enable RX addr on pipe 0

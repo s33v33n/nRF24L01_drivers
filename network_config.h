@@ -1,7 +1,19 @@
 #ifndef NETWORK_CONFIG_H
 #define NETWORK_CONFIG_H
 
-#include <stdint.h>
+#ifdef __KERNEL__
+    #include <linux/types.h> // kernel types
+#else
+    #include <stdint.h>      // user-space types
+#endif
+
+#define DRIVER_NAME "nrf24l01" // !!! Do not touch - makefile and devietree dependency !!! 
+
+
+#define NRF_NDEVICES 2
+#define NRF_MAX_PAYLOAD_SIZE 32
+
+
 
 // ================ SPI0 ================
 #define RADIO_SPI0_ENABLE   1
@@ -24,6 +36,8 @@
 #define SPI0_SPEED          8000000  //  8 MHz
 // ================ SPI0 ================
 
+
+
 // ================ SPI1 ================
 #define RADIO_SPI1_ENABLE   1
 #define DEV_NAME_SPI1       "nrf_garage" // YOUR_MODE_NAME
@@ -45,6 +59,8 @@
 /* ---- SPI Speed ---- */
 #define SPI1_SPEED          8000000  //  8 MHz
 // ================ SPI1 ================
+
+#ifndef __KERNEL__
 
 #define NRF_MASTER_ADDRESS 0x1122334455ULL
 
@@ -72,5 +88,6 @@ static const struct nrf_node_config nrf_nodes[] = {
     {DEV_NAME_SPI1, 0x00, 0xAABBCCDD02ULL, 0, 2, 15, 3, 0}
 };
 
+#endif // __KERNEL__
 
 #endif // NETWORK_CONFIG_H
