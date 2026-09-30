@@ -48,12 +48,10 @@ static ssize_t nrf24l01_read(struct file *file, char __user *buf, size_t count, 
     size_t payload_len = count;
 
     if (payload_len > NRF_MAX_PAYLOAD_SIZE){
-
         payload_len = NRF_MAX_PAYLOAD_SIZE;
     }
         
     if (wait_event_interruptible(dev->rx_waitqueue, dev->rx_data_ready)) {
-
         return -ERESTARTSYS; // restart system call
     }
 
@@ -136,7 +134,6 @@ static ssize_t nrf24l01_write(struct file *file, const char __user *buf, size_t 
     return payload_len; 
 }
 
-
 static __poll_t nrf24l01_poll(struct file *file, poll_table *wait)
 {
     struct nrf24l01_dev *dev = file->private_data;
@@ -159,32 +156,21 @@ static __poll_t nrf24l01_poll(struct file *file, poll_table *wait)
 static long nrf24l01_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
     struct nrf24l01_dev *dev = file->private_data;
+    size_t bytes_to_write;
+
     u8 val;
-    unsigned char status_reg;
-    unsigned char rf_setup;
+    u8 status_reg;
+    u8 rf_setup;
     
     // nrf pipes
     struct nrf_pipe_config pipe_config;
-    unsigned long long tx_addr;
-    unsigned char enable_rxaddr;
-    unsigned char reg_tx_addr;
-    unsigned char reg_rx_addr;
-    size_t bytes_to_write;
+    u64 tx_addr;
+    u8 enable_rxaddr;
+    u8 reg_tx_addr;
+    u8 reg_rx_addr;
 
-    switch(cmd) {
 
-        case NRF_IOCTL_GET_STATUS:
-
-            mutex_lock(&dev -> priv_mutex);
-            
-            nrf_read_reg(dev, NRF_REG_STATUS, &status_reg);
-            
-            mutex_unlock(&dev -> priv_mutex);
-
-            if (copy_to_user((u8 *)arg, &status_reg, sizeof(u8))){
-                return -EFAULT;
-            } 
-            break;
+    switch(cmd) { 
 
         case NRF_IOCTL_SET_CHANNEL:
         
@@ -271,34 +257,6 @@ static long nrf24l01_ioctl(struct file *file, unsigned int cmd, unsigned long ar
             dev_info(&dev->spi->dev, "IOCTL: Speed set to %d\n", val);
             break;
 
-        case NRF_IOCTL_GET_RF_CHANNEL:
-        
-            mutex_lock(&dev->priv_mutex);
-            
-            nrf_read_reg(dev, NRF_REG_RF_CH, &status_reg);
-            
-            mutex_unlock(&dev->priv_mutex);
-
-            val = status_reg; 
-
-            if (copy_to_user((u8*)arg, &val, sizeof(u8))){
-                return -EFAULT;
-            } 
-            break;
-
-        case NRF_IOCTL_GET_RF_SETUP:
-
-            mutex_lock(&dev->priv_mutex);
-    
-            nrf_read_reg(dev, NRF_REG_RF_SETUP, &rf_setup);
-
-            mutex_unlock(&dev->priv_mutex);
-
-            if (copy_to_user((u8*)arg, &rf_setup, sizeof(u8))){
-                return -EFAULT;
-            } 
-            break;
- 
         case NRF_IOCTL_SET_RX_ADDR:
 
             if(copy_from_user(&pipe_config, (struct nrf_pipe_config *)arg, sizeof(struct nrf_pipe_config))){
@@ -354,8 +312,52 @@ static long nrf24l01_ioctl(struct file *file, unsigned int cmd, unsigned long ar
             
             // when transmitting pipe 0 must be the same as tx_addr for ACK
             nrf_write_pipe_register(dev, reg_rx_addr, (const u8 *)&tx_addr, bytes_to_write);
+                        
+            gpiod_set_value(dev->ce_gpio, 1);
+            mutex_unlock(&dev->priv_mutex);
 
             dev_info(&dev->spi->dev, "TX pipe enabled: address: %llu\n", tx_addr);
+            break;
+
+        case NRF_IOCTL_GET_STATUS:
+
+            mutex_lock(&dev -> priv_mutex);
+            
+            nrf_read_reg(dev, NRF_REG_STATUS, &status_reg);
+            
+            mutex_unlock(&dev -> priv_mutex);
+
+            if (copy_to_user((u8 *)arg, &status_reg, sizeof(u8))){
+                return -EFAULT;
+            } 
+            break;
+
+        case NRF_IOCTL_GET_RF_CHANNEL:
+        
+            mutex_lock(&dev->priv_mutex);
+            
+            nrf_read_reg(dev, NRF_REG_RF_CH, &status_reg);
+            
+            mutex_unlock(&dev->priv_mutex);
+
+            val = status_reg; 
+
+            if (copy_to_user((u8*)arg, &val, sizeof(u8))){
+                return -EFAULT;
+            } 
+            break; 
+
+        case NRF_IOCTL_GET_RF_SETUP:
+
+            mutex_lock(&dev->priv_mutex);
+    
+            nrf_read_reg(dev, NRF_REG_RF_SETUP, &rf_setup);
+
+            mutex_unlock(&dev->priv_mutex);
+
+            if (copy_to_user((u8*)arg, &rf_setup, sizeof(u8))){
+                return -EFAULT;
+            } 
             break;
 
         default:
@@ -383,7 +385,7 @@ static const struct file_operations nrf24l01_fops = {
 
 // SPI
 static const struct spi_device_id nrf24l01_spi_id[] = {
-    {"nrf24l01", 0},
+    {DRIVER_NAME, 0},
     {},
 };
 

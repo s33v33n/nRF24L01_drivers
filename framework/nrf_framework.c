@@ -4,21 +4,20 @@
 #include <sys/ioctl.h>
 #include <string.h>
 #include <stdlib.h>
-#include "network_config.h"
-#include "Chacha20-Poly1305.h"
-#include "nrf_ioctl.h"
 
-#ifdef NODE_ID
-    #define MY_NODE_ID NODE_ID  
-#else
-    #error "Compilation error! Define node id: -DNODE_ID=X!" 
-#endif
+#include "../include/nrf_ioctl.h"
+#include "../include/nrf_network_user_config.h"
+#include "../encryption/Chacha20-Poly1305.h"
 
-#ifdef MASTER_ID
-    #define MY_MASTER_ID MASTER_ID  
-#else
-    #error "Compilation error! Define master id: -DMASTER_ID=X!" 
+#ifndef NODE_ID
+    #define NODE_ID 0      
 #endif
+#define MY_NODE_ID NODE_ID  
+
+#ifndef MASTER_ID
+    #define MASTER_ID 0    
+#endif
+#define MY_MASTER_ID MASTER_ID
 
 static struct nrf_node_config master_config = {0};
 static struct nrf_node_config node_config = {0};
@@ -34,6 +33,7 @@ int nrf_init(){
             ret = 0;
         }
     }
+
     if(ret){
         fprintf(stderr, "ERROR: Master ID=%d does not exist in network_config!\n", MY_MASTER_ID);
         return -1;

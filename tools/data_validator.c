@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#include "../network_config.h"
 
+#include "../include/nrf_network_user_config.h"
 
 int main(){
 
