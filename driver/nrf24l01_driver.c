@@ -375,13 +375,9 @@ static const struct file_operations nrf24l01_fops = {
     .poll = nrf24l01_poll,
     .unlocked_ioctl = nrf24l01_ioctl,
 };
-
 /* END OF FILE_OPERATIONS   */
 
-// TODO - verify driver's code and nrf setup during probe function
-
 /* START OF DRIVER DESCRIPTION */
-
 // 1. Device declararion (compatibility using SPI and DeviceTree)
 
 // SPI
@@ -448,7 +444,6 @@ static int nrf24l01_probe(struct spi_device *spi)
         };
 
         // for first byte nRF returns STATUS register
-
         struct spi_message m;
         spi_message_init(&m);
         spi_message_add_tail(&t, &m);
@@ -478,31 +473,47 @@ static int nrf24l01_probe(struct spi_device *spi)
     dev_info(&spi->dev, "Device [%s] probed successfully\n", model_name);
 
     /* START OF NRF24 HARDWARE INIT */
-
     // optionally - if device is working less than 15ms   
     msleep(15);
 
-    // RF setup: Channel + Speed + TX power
-    nrf_write_reg(dev, NRF_REG_RF_CH, 0x0F);       // f0 = 2400 MHz (channel 15)
+    // CONFIG
+    nrf_write_reg(dev, NRF_REG_CONFIG, 0x0D);   // radio off, rx mode, enable crc 2 bytes, force crc 
+
+    // payload size for pipes
+    for (u8 i = 0; i <= 5; i++) {
+        nrf_write_reg(dev, NRF_REG_RX_PW_P0 + i, NRF_MAX_PAYLOAD_SIZE);
+    }
+    
+    // ack active on every pipe
+    nrf_write_reg(dev, NRF_REG_EN_AA, 0x3F);
+
+    // enable only rx on pipe 0
+    nrf_write_reg(dev, NRF_REG_EN_RXADDR, 0x01);
+
+    // address width - 5 bytes
+    nrf_write_reg(dev, NRF_REG_SETUP_AW, 0x03);
+
+    // 15 retries every after 1ms delay
+    nrf_write_reg(dev, NRF_REG_SETUP_RETR, 0x3F); 
+    
+    // RF setup: Channel 
+    nrf_write_reg(dev, NRF_REG_RF_CH, 0x0F);       // f0 = 2400 MHz, channel 15 = 2425 MHz
+    
+    // RF setup: Speed + TX power
     nrf_write_reg(dev, NRF_REG_RF_SETUP, 0x01); // Power = -18 dBm, Speed = 1Mbit/s
-    nrf_write_reg(dev, NRF_REG_RX_PW_P0, NRF_MAX_PAYLOAD_SIZE);   // RX payload size = 32 bytes 
 
-    nrf_write_reg(dev, NRF_REG_EN_AA, 0x01);      // auto ACK on pipe 0
-    nrf_write_reg(dev, NRF_REG_EN_RXADDR, 0x01);  // Enable RX addr on pipe 0
-    nrf_write_reg(dev, NRF_REG_SETUP_RETR, 0x3F); // 15 retries
-
-    nrf_write_reg(dev, NRF_REG_CONFIG, 0x0F);   // power up, rx mode, enable crc 2 bytes, force crc 
-
-    nrf_write_reg(dev, NRF_CMD_FLUSH_RX, 0);
-    nrf_write_reg(dev, NRF_CMD_FLUSH_TX, 0);
+    // STATUS
     nrf_write_reg(dev, NRF_REG_STATUS, 0x70);
 
-    msleep(2); // start up wait 1.5ms 
+    //set my own default addresses
+    u8 default_addr[5] = {0x77, 0x88, 0x99, 0xAA, 0xBB};
+    nrf_write_pipe_register(dev, NRF_REG_TX_ADDR, default_addr, 5);
+    nrf_write_pipe_register(dev, NRF_REG_RX_ADDR_P0, default_addr, 5);
 
+    msleep(2); // start up wait 1.5ms 
     /* END OF NRF24 HARDWARE INIT */
     
     /* START OF SIMPLE CHECK */  
-    
     u8 check_pw_p0 = 0;
     u8 check_config = 0;
     u8 check_rf_ch = 0;
@@ -517,8 +528,12 @@ static int nrf24l01_probe(struct spi_device *spi)
     dev_info(&spi->dev, "CONFIG = 0x%02X, expected = 0x07\n", check_config);
     dev_info(&spi->dev, "RF_CH = 0x%02X, expected = 0x0F\n", check_rf_ch);
     dev_info(&spi->dev, "RF_SETUP = 0x%02X, expected = 0x01\n", check_rf_setup);
-    
     /* END OF SIMPLE CHECK */
+
+    // SPI commands - TODO 
+    nrf_write_reg(dev, NRF_CMD_FLUSH_RX, 0);
+    nrf_write_reg(dev, NRF_CMD_FLUSH_TX, 0);
+
 
     // Set device to listening mode
 

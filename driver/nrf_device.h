@@ -47,7 +47,6 @@ struct nrf24l01_dev
 #define NRF_REG_RF_SETUP      0x06 // RF setup (Power, speed)
 #define NRF_REG_STATUS        0x07 // Status register
 #define NRF_REG_RX_PW_P0      0x11 // Payload width for pipe 0
-#define NRF_REG_FIFO_STATUS   0x17 // FIFO status 
 
 // pipes
 #define NRF_REG_RX_ADDR_P0    0x0A // RX address pipe 0
