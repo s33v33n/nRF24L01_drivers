@@ -29,15 +29,39 @@ static int nrf24l01_open(struct inode *inode, struct file *file)
     struct nrf24l01_dev *dev = container_of(inode->i_cdev, struct nrf24l01_dev, cdev);
     file->private_data = dev;
 
-    dev_info(&dev->spi->dev, "Device opened\n");
+    mutex_lock(&dev->priv_mutex);
+    
+    // turn radio on in RX mode
+    nrf_write_reg(dev, NRF_REG_CONFIG, 0x0F);
+    
+    // wait for hardware
+    msleep(2); 
+    
+    // antenna up
+    gpiod_set_value(dev->ce_gpio, 1);
+    
+    mutex_unlock(&dev->priv_mutex);
+
+    dev_info(&dev->spi->dev, "Device opened - Radio turned on in RX mode\n");
     return 0;
 }
 
 static int nrf24l01_release(struct inode *inode, struct file *file)
 {
-    // reverse open actions (nothing for now)
+    // reverse open actions
     struct nrf24l01_dev *dev = file->private_data;
-    dev_info(&dev->spi->dev, "Device closed\n");
+
+    mutex_lock(&dev->priv_mutex);
+    
+    // antenna down
+    gpiod_set_value(dev->ce_gpio, 0);
+    
+    // turn off radio
+    nrf_write_reg(dev, NRF_REG_CONFIG, 0x0D);
+    
+    mutex_unlock(&dev->priv_mutex);
+
+    dev_info(&dev->spi->dev, "Device closed - Radio turned off\n");
     return 0;
 }
 
@@ -58,6 +82,12 @@ static ssize_t nrf24l01_read(struct file *file, char __user *buf, size_t count, 
     mutex_lock(&dev -> priv_mutex);
 
     nrf_read_payload(dev, rx_buf, payload_len);
+    
+    u8 fifo_status = 0;
+    nrf_read_reg(dev, NRF_REG_FIFO_STATUS, &fifo_status);
+    if (fifo_status & 0x01) {
+        dev->rx_data_ready = false;
+    }
 
     mutex_unlock(&dev -> priv_mutex);
 
@@ -66,8 +96,6 @@ static ssize_t nrf24l01_read(struct file *file, char __user *buf, size_t count, 
     }
 
     dev_info(&dev->spi->dev, "Received %zu bytes\n", payload_len);
-    
-    dev->rx_data_ready = false;
 
     return payload_len; 
 }
@@ -477,7 +505,7 @@ static int nrf24l01_probe(struct spi_device *spi)
     msleep(15);
 
     // CONFIG
-    nrf_write_reg(dev, NRF_REG_CONFIG, 0x0D);   // radio off, rx mode, enable crc 2 bytes, force crc 
+    nrf_write_reg(dev, NRF_REG_CONFIG, 0x0D);   // radio is off (device is on power), rx mode, enable crc 2 bytes, force crc 
 
     // payload size for pipes
     for (u8 i = 0; i <= 5; i++) {
@@ -513,29 +541,9 @@ static int nrf24l01_probe(struct spi_device *spi)
     msleep(2); // start up wait 1.5ms 
     /* END OF NRF24 HARDWARE INIT */
     
-    /* START OF SIMPLE CHECK */  
-    u8 check_pw_p0 = 0;
-    u8 check_config = 0;
-    u8 check_rf_ch = 0;
-    u8 check_rf_setup = 0;
-
-    nrf_read_reg(dev, NRF_REG_RX_PW_P0, &check_pw_p0);
-    nrf_read_reg(dev, NRF_REG_CONFIG, &check_config);
-    nrf_read_reg(dev, NRF_REG_RF_CH, &check_rf_ch);
-    nrf_read_reg(dev, NRF_REG_RF_SETUP, &check_rf_setup);
-
-    dev_info(&spi->dev, "RX_PW_P0 = 0x%02X, expected = 0x20\n", check_pw_p0);
-    dev_info(&spi->dev, "CONFIG = 0x%02X, expected = 0x07\n", check_config);
-    dev_info(&spi->dev, "RF_CH = 0x%02X, expected = 0x0F\n", check_rf_ch);
-    dev_info(&spi->dev, "RF_SETUP = 0x%02X, expected = 0x01\n", check_rf_setup);
-    /* END OF SIMPLE CHECK */
-
-    // SPI commands - TODO 
+    // clear FIFO queue 
     nrf_write_reg(dev, NRF_CMD_FLUSH_RX, 0);
     nrf_write_reg(dev, NRF_CMD_FLUSH_TX, 0);
-
-
-    // Set device to listening mode
 
     // Init waitqueue for RX
     init_waitqueue_head(&dev->rx_waitqueue);
@@ -554,9 +562,6 @@ static int nrf24l01_probe(struct spi_device *spi)
         dev_err(&spi->dev, "Failed to request IRQ %d\n", dev->irq);
         return ret;
     }
-
-    // Start listening (CE HIGH)
-    gpiod_set_value(dev->ce_gpio, 1);
 
     // register character device 
     dev -> minor = nrf24l01_minor_counter++;
@@ -590,7 +595,7 @@ static void nrf24l01_remove(struct spi_device *spi)
     gpiod_set_value(dev->ce_gpio, 0);
 
     {
-        const char *model_name = "default - safety mechnism"; // safety mechnism - if not defined in dts
+        const char *model_name = "default - safety mechnism, model name not defined"; // safety mechnism - if not defined in dts
 
         if (spi->dev.of_node)
         {
