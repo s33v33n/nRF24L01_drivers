@@ -128,7 +128,7 @@ static ssize_t nrf24l01_write(struct file *file, const char __user *buf, size_t 
     nrf_write_reg(dev, NRF_REG_CONFIG, 0x0E);
 
     // clear buffer and flags
-    nrf_write_reg(dev, NRF_CMD_FLUSH_TX, 0);
+    nrf_send_spi_command(dev, NRF_CMD_FLUSH_TX);
     nrf_write_reg(dev, NRF_REG_STATUS, 0x70);
 
     // Write data to device
@@ -461,34 +461,21 @@ static int nrf24l01_probe(struct spi_device *spi)
     // nRF24L01 default value after reset = 0x08
     // 0x00 or 0xFF = wiring problem (MISO/MOSI/CS issue)
     {
-        // spi = (spi_transfer + spi_message) -> spi_sync
+        u8 config_val = 0;
+        u8 status_val = 0;
 
-        u8 tx[2] = {0x00, 0xFF}; // command R_REGISTER|CONFIG + dummy byte
-        u8 rx[2] = {0x00, 0x00};
-        struct spi_transfer t = {
-            .tx_buf = tx,
-            .rx_buf = rx,
-            .len = 2,
-        };
-
-        // for first byte nRF returns STATUS register
-        struct spi_message m;
-        spi_message_init(&m);
-        spi_message_add_tail(&t, &m);
-
-        ret = spi_sync(spi, &m);
-        if (ret < 0)
-        {
+        ret = nrf_read_reg(dev, NRF_REG_CONFIG, &config_val);
+        if (ret < 0) {
             dev_err(&spi->dev, "SPI transfer failed: %d\n", ret);
             return ret;
         }
 
-        dev_info(&spi->dev, "STATUS = 0x%02X, CONFIG = 0x%02X\n", rx[0], rx[1]);
+        nrf_read_reg(dev, NRF_REG_STATUS, &status_val);
+        dev_info(&spi->dev, "STATUS = 0x%02X, CONFIG = 0x%02X\n", status_val, config_val);
 
-        if (rx[1] == 0x00 || rx[1] == 0xFF){
+        if (config_val == 0x00 || config_val == 0xFF) {
             dev_warn(&spi->dev, "Unexpected CONFIG value - check wiring!\n");
-        }
-            
+        }     
     }
 
     const char *model_name = "default - safety mechnism, model name not defined"; // safety mechnism - if not defined in dts
@@ -542,8 +529,8 @@ static int nrf24l01_probe(struct spi_device *spi)
     /* END OF NRF24 HARDWARE INIT */
     
     // clear FIFO queue 
-    nrf_write_reg(dev, NRF_CMD_FLUSH_RX, 0);
-    nrf_write_reg(dev, NRF_CMD_FLUSH_TX, 0);
+    nrf_send_spi_command(dev, NRF_CMD_FLUSH_RX);
+    nrf_send_spi_command(dev, NRF_CMD_FLUSH_TX);
 
     // Init waitqueue for RX
     init_waitqueue_head(&dev->rx_waitqueue);

@@ -118,6 +118,20 @@ int nrf_write_pipe_register(struct nrf24l01_dev *dev, u8 reg, const u8 *buf, siz
     return spi_sync(dev->spi, &m);
 }
 
+int nrf_send_spi_command(struct nrf24l01_dev *dev, u8 cmd)
+{
+    struct spi_transfer t = {
+        .tx_buf = &cmd,
+        .len = 1,
+    };
+
+    struct spi_message m;
+    spi_message_init(&m);
+    spi_message_add_tail(&t, &m);
+
+    return spi_sync(dev->spi, &m);
+}
+
 irqreturn_t nrf24l01_isr(int irq, void *dev_id)
 {
     struct nrf24l01_dev *dev = dev_id;
