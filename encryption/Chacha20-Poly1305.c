@@ -4,14 +4,17 @@
 
 void combine_chacha20_block_and_message(
     uint32_t prepared_chacha_block[CHACHA_BLOCKS], 
-    unsigned char *message, 
+    const unsigned char *message, 
     size_t length,
     unsigned char *encrypted_message    
     ){
 
         unsigned char *keystream_byte = (unsigned char *)prepared_chacha_block;
 
-        for(int i = 0; i < length; i++){
+        if (length > 64){
+            return;
+        }  
+        for(size_t i = 0; i < length; i++){
             encrypted_message[i] = message[i] ^ keystream_byte[i]; 
         }
 }
@@ -19,7 +22,7 @@ void combine_chacha20_block_and_message(
 void generate_chacha20_block(
     const uint32_t key[KEY_BLOCKS],  
     const uint32_t counter, 
-    uint32_t nonce[NONCE_BLOCKS],
+    const uint32_t nonce[NONCE_BLOCKS],
     uint32_t output_block[CHACHA_BLOCKS]
     ){
 
@@ -77,10 +80,14 @@ void generate_chacha20_block(
 
 void poly1305(
     uint32_t chacha_block[CHACHA_BLOCKS],
-    unsigned char *message, 
+    const unsigned char *message, 
     size_t length,
     unsigned char authenticate[POLY_BLOCKS]
     ){
+
+        if (length > 16) {
+            return;
+        }
 
         uint32_t r[4] = {0};
         uint32_t s[4] = {0};
@@ -94,7 +101,7 @@ void poly1305(
         // 2. 16-byte block 
         unsigned char block[17] = {0};
         size_t bytes = 0;
-        for(bytes; bytes < length; bytes++){
+        for(; bytes < length; bytes++){
             block[bytes] = message[bytes];
         }
         block[bytes] = 0x01;
@@ -228,4 +235,13 @@ void poly1305(
         authenticate[13] = (uint8_t)(tag_sum >> 8);
         authenticate[14] = (uint8_t)(tag_sum >> 16);
         authenticate[15] = (uint8_t)(tag_sum >> 24);
+}
+
+int verify_tag(const unsigned char *tag1, const unsigned char *tag2)
+{
+    unsigned char diff = 0;
+    for (int i = 0; i < POLY_BLOCKS; i++) {
+        diff |= tag1[i] ^ tag2[i];
+    }
+    return (diff == 0);
 }

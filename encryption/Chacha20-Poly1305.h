@@ -1,5 +1,5 @@
-#ifndef CHACHA20_H
-#define CHACHA20_H
+#ifndef CHACHA20_POLY1305_H
+#define CHACHA20_POLY1305_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -21,16 +21,25 @@
 
 void combine_chacha20_block_and_message(
     uint32_t prepared_chacha_block[CHACHA_BLOCKS], 
-    unsigned char *message, 
+    const unsigned char *message, 
     size_t length,
-    unsigned char *    
+    unsigned char *encrypted_message   
 );   
 
 void generate_chacha20_block(
     const uint32_t key[KEY_BLOCKS],  
     const uint32_t counter, 
-    uint32_t nonce[NONCE_BLOCKS],
+    const uint32_t nonce[NONCE_BLOCKS],
     uint32_t output_block[CHACHA_BLOCKS]
-    );
+);
 
-#endif // CHACHA20_H
+void poly1305(
+    uint32_t chacha_block[CHACHA_BLOCKS],
+    const unsigned char *message,
+    size_t length,
+    unsigned char authenticate[POLY_BLOCKS]
+);
+
+int verify_tag(const unsigned char *tag1, const unsigned char *tag2);
+
+#endif // CHACHA20_POLY1305_H
