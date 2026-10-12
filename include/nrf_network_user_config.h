@@ -14,9 +14,9 @@ static const uint32_t NRF_NETWORK_KEY[8] = {
 struct nrf_node_config{
     char *name;
     uint64_t tx_address;
-    uint64_t rx_pipe_addr;
-    uint8_t rx_pipe_num;
-    uint8_t id;
+    uint64_t rx_pipe_addr;  // must be uniqe
+    uint8_t rx_pipe_num;    // only 0 allowed
+    uint8_t id;             // must be uniqe
     uint8_t channel;
     uint8_t power;
     uint8_t speed;
