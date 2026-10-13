@@ -9,6 +9,7 @@
 #include "../include/nrf_ioctl.h"
 #include "../include/nrf_network_user_config.h"
 #include "../encryption/Chacha20-Poly1305.h"
+#include "nrf_packet.h"
 
 #ifndef NODE_ID
     #define NODE_ID 0      
@@ -26,14 +27,13 @@ static struct nrf_node_config master_config = {0};
 static struct nrf_node_config node_config = {0};
 int nrf_fd = -1;
 
-static uint32_t my_tx_counter = 1;
-static uint32_t last_rx_counter[ALL_DEVICES] = {0};
+// functions for nrf manage:
 
 int nrf_init(){
 
     // find master config
     int ret = 1;
-    for(int i=0; i < (sizeof(nrf_nodes)/sizeof(nrf_nodes[0])); i++){
+    for(size_t i=0; i < (sizeof(nrf_nodes)/sizeof(nrf_nodes[0])); i++){
         if(nrf_nodes[i].id == MY_MASTER_ID){
             master_config = nrf_nodes[i];
             ret = 0;
@@ -47,7 +47,7 @@ int nrf_init(){
 
     //find node number for init
     ret = 1;
-    for(int i=0; i < ALL_DEVICES; i++){
+    for(size_t i=0; i < ALL_DEVICES; i++){
         if(nrf_nodes[i].id == MY_NODE_ID){
             node_config = nrf_nodes[i];
             ret = 0;
@@ -159,54 +159,130 @@ int nrf_master_send(uint8_t target_node_id, char *message){
         return -1;
     }
 
-    // Send packet
-    uint8_t package_to_send[32] = {0};
-    uint32_t current_counter = my_tx_counter++;
+    // send package
+    int send_ret = send_packet(nrf_fd, master_config.id, message);
 
-    // counter value
-    package_to_send[0] = (uint8_t)(current_counter);
-    package_to_send[1] = (uint8_t)(current_counter >> 8);
-    package_to_send[2] = (uint8_t)(current_counter >> 16);
-    package_to_send[3] = (uint8_t)(current_counter >> 24);
-
-    // node ID
-    package_to_send[4] = master_config.id;
-
-    size_t msg_len = strlen(message);
-    if (msg_len > 11) {
-        msg_len = 11;
-        fprintf(stderr, "Warning: Message exceeds 11 chars (got %zu), truncating!\n", msg_len);
+    // return to master config
+    if(ioctl(nrf_fd, NRF_IOCTL_SET_CHANNEL, &master_config.channel) < 0) {
+        perror("IOCTL: Failed to return to TX RF master channel");
+        return -1;
     }
 
-    const uint32_t nonce[NONCE_BLOCKS] = {0, 0, current_counter};
-    uint32_t chacha_block[CHACHA_BLOCKS] = {0};
-
-    generate_chacha20_block(NRF_NETWORK_KEY, 0, nonce, chacha_block);
-
-    uint8_t *keystream = (uint8_t *)chacha_block;
-    for (size_t i = 0; i < msg_len; i++) {
-        package_to_send[5 + i] = (uint8_t)message[i] ^ keystream[32 + i];
+    if(ioctl(nrf_fd, NRF_IOCTL_SET_SPEED, &master_config.speed) < 0) {
+        perror("IOCTL: Failed to return to TX master speed");
+        return -1;
     }
 
-    uint8_t tag[POLY_BLOCKS] = {0};
-    poly1305(chacha_block, package_to_send, 16, tag);
-    memcpy(&package_to_send[16], tag, POLY_BLOCKS);
-
-    ssize_t bytes_sent = write(nrf_fd, package_to_send, sizeof(package_to_send));
-    if (bytes_sent != (ssize_t)sizeof(package_to_send)) {
-        perror("write: Failed to send packet");
+    //verify if package was sent
+    if (send_ret < 0) {
         return -1;
     }
 
     return 0;
 }
 
-int nrf_node_send(char *message){
+int nrf_node_send(char *message) {
 
+    if (nrf_fd < 0 || message == NULL) {
+        return -1;
+    }
+
+    // rf master config
+    if (ioctl(nrf_fd, NRF_IOCTL_SET_CHANNEL, &master_config.channel) < 0) {
+        perror("IOCTL: Failed to set master RF channel");
+        return -1;
+    }
+
+    if (ioctl(nrf_fd, NRF_IOCTL_SET_SPEED, &master_config.speed) < 0) {
+        perror("IOCTL: Failed to set master speed");
+        return -1;
+    }
+
+    // send package
+    int send_ret = send_packet(nrf_fd, node_config.id, message);
+
+    // return to node rf config
+    if (ioctl(nrf_fd, NRF_IOCTL_SET_CHANNEL, &node_config.channel) < 0) {
+        perror("IOCTL: Failed to return to node RF channel");
+        return -1;
+    }
+
+    if (ioctl(nrf_fd, NRF_IOCTL_SET_SPEED, &node_config.speed) < 0) {
+        perror("IOCTL: Failed to return to node speed");
+        return -1;
+    }
+
+    if (send_ret < 0) {
+        return -1;
+    }
+
+    return 0;
 }
 
-int nrf_receive(){
+int nrf_receive(uint8_t *sender_id, char *out_message, size_t max_len) {
 
+    if (nrf_fd < 0 || out_message == NULL) {
+        return -1;
+    }
+
+    if(receive_packet(nrf_fd, sender_id, out_message, max_len) < 0){
+        return -1;
+    }
+
+    return 0;
+}
+
+// ... and setters + getters
+
+// Setters
+
+int nrf_set_channel(uint8_t channel) {
+    if (nrf_fd < 0 || channel < 1 || channel > 124){
+        return -1;
+    } 
+
+    return ioctl(nrf_fd, NRF_IOCTL_SET_CHANNEL, &channel);
+}
+
+int nrf_set_power(uint8_t power) {
+    if (nrf_fd < 0 || power > 3){
+        return -1;
+    } 
+
+    return ioctl(nrf_fd, NRF_IOCTL_SET_POWER, &power);
+}
+
+int nrf_set_speed(uint8_t speed) {
+    if (nrf_fd < 0 || (speed != 1 && speed != 2)){
+        return -1;
+    } 
+    return ioctl(nrf_fd, NRF_IOCTL_SET_SPEED, &speed);
+}
+
+// Getters
+
+int nrf_get_status(uint8_t *status) {
+    if (nrf_fd < 0 || status == NULL){
+        return -1;
+    }
+
+    return ioctl(nrf_fd, NRF_IOCTL_GET_STATUS, status);
+}
+
+int nrf_get_channel(uint8_t *channel) {
+    if (nrf_fd < 0 || channel == NULL){
+        return -1;
+    } 
+
+    return ioctl(nrf_fd, NRF_IOCTL_GET_RF_CHANNEL, channel);
+}
+
+int nrf_get_rf_setup(uint8_t *setup) {
+    if (nrf_fd < 0 || setup == NULL){
+        return -1;
+    } 
+
+    return ioctl(nrf_fd, NRF_IOCTL_GET_RF_SETUP, setup);
 }
 
 int nrf_close() {
@@ -217,4 +293,3 @@ int nrf_close() {
 
     return 0;
 }
-
