@@ -1,6 +1,12 @@
 #!/bin/bash
 echo "=== Script doesn't check wiring - check it by yourself ==="
 
+# Optional default configuration generation
+read -p "Do you want to generate default network configuration? [y/N]: " gen_conf
+if [[ "$gen_conf" =~ ^[Yy]$ ]]; then
+    tools/auto_config.sh
+fi
+
 # user's data validation
 gcc -Wall -Werror tools/data_validator.c -o tools/validator
 if ! ./tools/validator; then

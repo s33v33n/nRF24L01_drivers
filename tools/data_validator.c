@@ -17,7 +17,7 @@ int main(){
 
         // check name
         char *uniqe_name = nrf_nodes[i].name;
-        for(int j=i+1; j < nodes_counter; j++){
+        for(int j=i + 1; j < nodes_counter; j++){
             if(strcmp(uniqe_name, nrf_nodes[j].name) == 0){
                 printf("The same name for nodes %d and %d\n", i, j);
                 return -1;
@@ -26,26 +26,24 @@ int main(){
 
         // check ID 
         uint8_t uniqe_id = nrf_nodes[i].id;
-        for(int j=i+1; j < nodes_counter; j++){
-            if(uniqe_id == nrf_nodes[j].id){
-                printf("The same ID for nodes %d and %d\n", i, j);
-                return -1;
-            }
+        if(uniqe_id != i){
+            printf("Node %d ID exceeds allowed order. Allowed range <0, all devices - 1> in ascending order.\n", i);
+            return -1;
         }
 
         // check rx pipe number
         uint64_t uniqe_addr = nrf_nodes[i].rx_pipe_addr;
-        for(int j=i+1; j < nodes_counter; j++){
+        for(int j=i + 1; j < nodes_counter; j++){
             if(uniqe_addr == nrf_nodes[j].rx_pipe_addr){
                 printf("The same address for nodes %d and %d\n", i, j);
                 return -1;
             }
         }
 
-       // check channel 
+        // check pipe number 
         uint8_t pipe_number = nrf_nodes[i].rx_pipe_num;
-        if(pipe_number > 5){
-            printf("Node: %d error - enter pipe number as uint from range <0, 5>, current pipe number: %d\n",i, pipe_number);
+        if(pipe_number != 0){
+            printf("Node: %d error - only pipe 0 allowed. Current pipe number: %d\n",i, pipe_number);
             return -1;
         }
 
@@ -65,8 +63,8 @@ int main(){
 
         // check speed
         uint8_t speed = nrf_nodes[i].speed;
-        if(speed != 0 && speed != 1){
-            printf("Node: %d error - enter speed as uint from range <0, 1>, current speed: %d\n",i, speed);
+        if(speed != 1 && speed != 2){
+            printf("Node: %d error - enter speed as uint from range <1, 2>, current speed: %d\n",i, speed);
             return -1;
         }
     }

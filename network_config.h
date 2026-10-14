@@ -1,11 +1,10 @@
 #ifndef NETWORK_CONFIG_H
 #define NETWORK_CONFIG_H
 
-#define DRIVER_NAME "nrf24l01" // !!! Do not touch - makefile and devietree dependency !!! 
+#define DRIVER_NAME "nrf24l01"      // !!! Do not touch - makefile and devicetree dependency !!! 
+#define NRF_MAX_PAYLOAD_SIZE 32     // !!! Do not touch - code logic dependency !!! 
 
-#define NRF_NDEVICES 2
-#define NRF_MAX_PAYLOAD_SIZE 32
-
+#define NRF_NDEVICES 2 // depends how many nRF devices are connected to one device. Each nRF could be utilized from different user-space program. 
 
 
 // ================ SPI0 ================
