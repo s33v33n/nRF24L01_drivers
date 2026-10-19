@@ -57,6 +57,20 @@ sed -e "s/__STATUS_0__/${STATUS_SPI0}/g" \
     -e "s/__CS_PIN_SPI1__/${CHIP_SELECT_PIN_SPI1}/g" \
     driver/nrf24l01.dts.template > driver/nrf24l01.dts
 
-echo "nrf24l01.dts successfully generated"
-
 # ============= DeviceTree =============
+
+# ============= Compilation & Installation =============
+if [ -n "$1" ]; then
+    NODE_ID="$1"
+else
+    read -p "Enter Node ID to compile (0 for Master, 1..N for Slave) [default: 0]: " NODE_ID
+    NODE_ID=${NODE_ID:-0}
+fi
+
+if ! ./tools/validator "$NODE_ID"; then
+    echo "Invalid NODE_ID selected. Aborting build."
+    exit 1
+fi
+
+echo "Building and installing for NODE_ID=${NODE_ID}..."
+make all NODE_ID="${NODE_ID}"

@@ -1,10 +1,11 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 
 #include "../include/nrf_network_user_config.h"
 
-int main(){
+int main(int argc, char *argv[]){
 
     if(sizeof(nrf_nodes) == 0){
         printf("Nodes were not added to the network\n");
@@ -68,7 +69,17 @@ int main(){
             return -1;
         }
     }
+ 
+    if (argc > 1) {
+        char *endptr = NULL;
+        long requested_id = strtol(argv[1], &endptr, 10);
+        if (*endptr != '\0' || requested_id < 0 || requested_id >= nodes_counter) {
+            fprintf(stderr, "Error: Selected NODE_ID=%ld is out of range! Configured nodes: <0, %d>\n",
+                    requested_id, nodes_counter - 1);
+            return -1;
+        }
+    }
 
-    printf("User's data are correct\n");
+    printf("User's data are correct (configured nodes: 0..%d)\n", nodes_counter - 1);
     return 0;
 }

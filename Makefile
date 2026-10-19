@@ -1,105 +1,116 @@
-#   make              - build the kernel module
+#   make              - build the project (driver, overlay, applications)
 #   make clean        - remove build artifacts
 #
-#   --- TEMPORARY (lost after reboot) ---
-#   make load         - load module directly from file (insmod, temporary)
-#   make unload       - remove module from the running kernel
-#   make reload       - unload + load again (useful during development)
-#   make dtbo_load    - compile and load overlay at runtime (temporary)
-#   make dtbo_unload  - unload overlay from the running system
-#
-#   --- UTILS ---
+#   --- HARDWARE (Kernel driver & Device Tree) ---
+#   make driver       - build kernel module (driver/nrf24l01.ko)
 #   make dtbo         - compile device tree overlay (.dts -> .dtbo)
 #   make dtbo_clean   - remove compiled overlay file
-#   make dmesg        - show last 30 kernel log lines
+#   make install      - install module and overlay permanently (auto-load on boot)
+#   make uninstall    - remove module and overlay from system
 #
-#   --- My app ---
-#   make make_app 	  - compile my app
-#   make run_app_n    - compile & run my app , n is device number
-#   make make_sniffer - compile sniffer
-#   make run_sniffer  - compile & run sniffer
+#   --- APPLICATIONS ---
+#   make master       - compile master application (NODE_ID=0)
+#   make run_master   - run master application
+#   make slave        - compile slave application (default NODE_ID=1)
+#   make run_slave    - run slave application
 
 # Module name (without .ko extension)
 MODULE_NAME := nrf24l01
-
-# Source file(s)
-obj-m += $(MODULE_NAME).o
-$(MODULE_NAME)-y := nrf24l01_driver.o nrf_hal.o
-
-# Kernel source directory (auto-detect running kernel)
-KDIR ?= /lib/modules/$(shell uname -r)/build
-
-# Current working directory
-PWD := $(shell pwd)
+DRIVER_DIR := driver
 
 # Device Tree Overlay source
-DTS_FILE := $(MODULE_NAME).dts
-DTBO_FILE := $(MODULE_NAME).dtbo
+DTS_FILE := $(DRIVER_DIR)/$(MODULE_NAME).dts
+DTBO_FILE := $(DRIVER_DIR)/$(MODULE_NAME).dtbo
 
-# Default target: build the module
-all:
-	$(MAKE) -C $(KDIR) M=$(PWD) modules
+# Boot paths for permanent overlay installation
+BOOT_OVERLAYS := /boot/overlays
+BOOT_CONFIG   := /boot/config.txt
 
-# Remove all build artifacts
-clean:
-	$(MAKE) -C $(KDIR) M=$(PWD) clean
-	rm -f secure_chat
-	rm -f sniffer	
+# Applications configuration
+CC := gcc
+CFLAGS := -Wall -Wextra -O2
+INCLUDES := -Iinclude -Iencryption -Iframework
+FRAMEWORK_SRC := framework/nrf_framework.c framework/nrf_packet.c encryption/Chacha20-Poly1305.c
 
-# Load module directly from .ko file (temporary - lost after reboot)
-load:
-	sudo insmod $(MODULE_NAME).ko
-	@echo "Module loaded (temporary - will be gone after reboot)."
+# Target node ID (0 for Master, 1..N for Slave)
+NODE_ID ?= 0
 
-# Remove module from the running kernel
-unload:
-	sudo rmmod $(MODULE_NAME)
-	@echo "Module unloaded."
+# Select application target based on NODE_ID (0 is Master, >0 is Slave)
+ifeq ($(NODE_ID),0)
+APP_TARGET := master
+else
+APP_TARGET := slave
+endif
 
-# Reload: unload and load again (useful during development)
-reload: unload load
+# Default target: build the module and selected application
+all: driver dtbo install $(APP_TARGET)
+
+# Build the kernel module in driver directory
+driver:
+	$(MAKE) -C $(DRIVER_DIR)
 
 # Compile the Device Tree overlay (.dts -> .dtbo)
 dtbo:
-	dtc -@ -I dts -O dtb -o $(DTBO_FILE) $(DTS_FILE)
+	$(MAKE) -C $(DRIVER_DIR) dtbo
 
 # Remove the compiled Device Tree overlay
 dtbo_clean:
-	rm -f $(DTBO_FILE)
+	$(MAKE) -C $(DRIVER_DIR) dtbo_clean
 
-# Load overlay into running system (temporary - lost after reboot)
-dtbo_load: dtbo
-	sudo dtoverlay $(DTBO_FILE)
-	@echo "Overlay loaded (temporary - will be gone after reboot)."
+# Permanent installation: copy module to kernel drivers and overlay to boot, then load immediately
+install: driver dtbo
+	sudo install -d /lib/modules/$$(uname -r)/kernel/drivers/spi
+	sudo install -m 644 $(DRIVER_DIR)/$(MODULE_NAME).ko /lib/modules/$$(uname -r)/kernel/drivers/spi/
+	sudo depmod -a
+	echo "$(MODULE_NAME)" | sudo tee /etc/modules-load.d/$(MODULE_NAME).conf
+	sudo install -m 644 $(DTBO_FILE) $(BOOT_OVERLAYS)/
+	@grep -q "^dtoverlay=$(MODULE_NAME)" $(BOOT_CONFIG) || echo "dtoverlay=$(MODULE_NAME)" | sudo tee -a $(BOOT_CONFIG)
+	@echo "Module and overlay installed permanently. Will load automatically on boot."
+	@echo "Loading overlay and module into running system now..."
+	@if lsmod | grep -q "^$(MODULE_NAME)"; then sudo rmmod $(MODULE_NAME) 2>/dev/null || true; fi
+	@if command -v dtoverlay >/dev/null 2>&1; then \
+		if sudo dtoverlay -l 2>/dev/null | grep -q "$(MODULE_NAME)"; then sudo dtoverlay -r $(MODULE_NAME) 2>/dev/null || true; fi; \
+		sudo dtoverlay $(DTBO_FILE) 2>/dev/null || true; \
+	fi
+	sudo modprobe $(MODULE_NAME) 2>/dev/null || sudo insmod $(DRIVER_DIR)/$(MODULE_NAME).ko
+	@echo "Driver is active and ready."
 
-# Unload overlay from the running system
-dtbo_unload:
-	sudo dtoverlay -r $(MODULE_NAME)
-	@echo "Overlay unloaded."
+# Remove permanent installation from system and unload from kernel
+uninstall:
+	@if lsmod | grep -q "^$(MODULE_NAME)"; then sudo rmmod $(MODULE_NAME) 2>/dev/null || true; fi
+	@if command -v dtoverlay >/dev/null 2>&1; then \
+		if sudo dtoverlay -l 2>/dev/null | grep -q "$(MODULE_NAME)"; then sudo dtoverlay -r $(MODULE_NAME) 2>/dev/null || true; fi; \
+	fi
+	sudo rm -f /etc/modules-load.d/$(MODULE_NAME).conf
+	sudo rm -f /lib/modules/$$(uname -r)/kernel/drivers/spi/$(MODULE_NAME).ko
+	sudo depmod -a
+	sudo rm -f $(BOOT_OVERLAYS)/$(MODULE_NAME).dtbo
+	@if [ -f $(BOOT_CONFIG) ]; then sudo sed -i '/^dtoverlay=$(MODULE_NAME)/d' $(BOOT_CONFIG); fi
+	@echo "Module and overlay uninstalled and unloaded."
 
-# Compile my app - secure_chat 
-make_app:
-	gcc secure_chat.c -o secure_chat
+# Compile master application
+master: examples/master.c $(FRAMEWORK_SRC)
+	$(CC) $(CFLAGS) $(INCLUDES) -DNODE_ID=0 examples/master.c $(FRAMEWORK_SRC) -o master
+	@echo "Compiled master (NODE_ID=0)"
 
-# Run my app - device 0
-run_app_0: make_app
-	sudo ./secure_chat /dev/nrf24l01_0 1234 7777
+# Run master application
+run_master: master
+	./master
 
-# Run my app - device 1
-run_app_1: make_app
-	sudo ./secure_chat /dev/nrf24l01_1 1234 9999
+# Compile slave application
+slave: examples/slave.c $(FRAMEWORK_SRC)
+	$(CC) $(CFLAGS) $(INCLUDES) -DNODE_ID=$(NODE_ID) examples/slave.c $(FRAMEWORK_SRC) -o slave
+	@echo "Compiled slave (NODE_ID=$(NODE_ID))"
 
-# Compile my app - secure_chat 
-make_sniffer:
-	gcc sniffer.c -o sniffer
+# Run slave application
+run_slave: slave
+	./slave
 
-# Run my app - device 0
-run_sniffer: make_sniffer
-	sudo ./sniffer
-
-# Show kernel logs 
-dmesg:
-	sudo dmesg | tail -30
+# Remove all build artifacts
+clean:
+	$(MAKE) -C $(DRIVER_DIR) clean
+	$(MAKE) -C $(DRIVER_DIR) dtbo_clean
+	rm -f master slave
 
 # these commands are just information for make, not output files
-.PHONY: all clean load unload reload dtbo dtbo_clean dtbo_load dtbo_unload dmesg make_ioctl make_app run_app_0 run_app_1 sniffer
+.PHONY: all clean dtbo dtbo_clean driver install uninstall master run_master slave run_slave
