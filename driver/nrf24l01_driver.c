@@ -14,7 +14,7 @@
 #include "nrf_device.h"
 #include "nrf_hal.h"
 #include "nrf_ioctl.h"
-#include "../network_config.h"
+#include "../user_config/hardware_config.h"
 
 static dev_t nrf24l01_devt;
 static struct class *nrf24l01_class;

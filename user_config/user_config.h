@@ -1,8 +1,8 @@
-#ifndef NRF_NETWORK_USER_CONFIG_H
-#define NRF_NETWORK_USER_CONFIG_H
+#ifndef USER_CONFIG_H
+#define USER_CONFIG_H
 
 #include <stdint.h>
-#include "../network_config.h"
+#include "hardware_config.h"
 
 #define NRF_MASTER_ADDRESS 0x1122334455ULL
 
@@ -30,4 +30,4 @@ static const struct nrf_node_config nrf_nodes[] = {
     {DEV_NAME_SPI1, 0x00, 0xAABBCCDD02ULL, 0, 1, 15, 3, 1}
 };
 
-#endif // NRF_NETWORK_USER_CONFIG_H
+#endif // USER_CONFIG_H

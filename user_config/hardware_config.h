@@ -1,5 +1,5 @@
-#ifndef NETWORK_CONFIG_H
-#define NETWORK_CONFIG_H
+#ifndef HARDWARE_CONFIG_H
+#define HARDWARE_CONFIG_H
 
 #define DRIVER_NAME "nrf24l01"      // !!! Do not touch - makefile and devicetree dependency !!! 
 #define NRF_MAX_PAYLOAD_SIZE 32     // !!! Do not touch - code logic dependency !!! 
@@ -52,4 +52,4 @@
 #define SPI1_SPEED          8000000  //  8 MHz
 // ================ SPI1 ================
 
-#endif // NETWORK_CONFIG_H
+#endif // HARDWARE_CONFIG_H

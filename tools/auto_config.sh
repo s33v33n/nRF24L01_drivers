@@ -1,7 +1,7 @@
 #!/bin/bash
 # ==============================================================================
 # nRF24L01+ Secure Network Configuration Generator
-# Generates default configuration in include/nrf_network_user_config.h
+# Generates default configuration in user_config/user_config.h
 # - Cryptographically secure 256-bit ChaCha20-Poly1305 key from /dev/urandom
 # - Random 40-bit Master address
 # - Node 0: "master", NRF_MASTER_ADDRESS, ID 0, channel 1, power 1, speed 1
@@ -10,7 +10,7 @@
 
 set -euo pipefail
 
-TARGET_FILE="include/nrf_network_user_config.h"
+TARGET_FILE="user_config/user_config.h"
 NUM_NODES=${1:-}
 
 # how many devices
@@ -45,11 +45,11 @@ fi
 
 # 4. save config file
 cat <<EOF > "$TARGET_FILE"
-#ifndef NRF_NETWORK_USER_CONFIG_H
-#define NRF_NETWORK_USER_CONFIG_H
+#ifndef USER_CONFIG_H
+#define USER_CONFIG_H
 
 #include <stdint.h>
-#include "../network_config.h"
+#include "hardware_config.h"
 
 #define NRF_MASTER_ADDRESS ${MASTER_ADDR}
 
@@ -91,7 +91,7 @@ done
 cat <<EOF >> "$TARGET_FILE"
 };
 
-#endif // NRF_NETWORK_USER_CONFIG_H
+#endif // USER_CONFIG_H
 EOF
 
 echo "Generated default secure configuration in ${TARGET_FILE}:"

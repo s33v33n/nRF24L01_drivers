@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "../include/nrf_network_user_config.h"
+#include "../user_config/user_config.h"
 
 int main(int argc, char *argv[]){
 

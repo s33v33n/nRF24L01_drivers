@@ -7,7 +7,7 @@
 #include <stdbool.h>
 
 #include "../include/nrf_ioctl.h"
-#include "../include/nrf_network_user_config.h"
+#include "../user_config/user_config.h"
 #include "../encryption/Chacha20-Poly1305.h"
 #include "nrf_packet.h"
 

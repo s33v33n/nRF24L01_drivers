@@ -29,7 +29,7 @@ BOOT_CONFIG   := /boot/config.txt
 # Applications configuration
 CC := gcc
 CFLAGS := -Wall -Wextra -O2
-INCLUDES := -Iinclude -Iencryption -Iframework
+INCLUDES := -Iinclude -Iuser_config -Iencryption -Iframework
 FRAMEWORK_SRC := framework/nrf_framework.c framework/nrf_packet.c encryption/Chacha20-Poly1305.c
 
 # Target node ID (0 for Master, 1..N for Slave)

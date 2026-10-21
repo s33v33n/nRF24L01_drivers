@@ -6,7 +6,7 @@
 #include <stdbool.h>
 
 #include "nrf_packet.h"
-#include "../include/nrf_network_user_config.h"
+#include "../user_config/user_config.h"
 #include "../encryption/Chacha20-Poly1305.h"
 
 #define ALL_DEVICES (sizeof(nrf_nodes) / sizeof((nrf_nodes)[0]))

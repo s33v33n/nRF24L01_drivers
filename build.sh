@@ -16,28 +16,31 @@ fi
 
 # ============= DeviceTree =============
 
+# ---- Hardware Configuration File ----
+HW_CONFIG_FILE="user_config/hardware_config.h"
+
 # ---- SPI0 ----
-ENABLE_SPI0=$(awk '/^[ \t]*#define RADIO_SPI0_ENABLE/ {print $3}' network_config.h)
+ENABLE_SPI0=$(awk '/^[ \t]*#define RADIO_SPI0_ENABLE/ {print $3}' "$HW_CONFIG_FILE")
 if [ "$ENABLE_SPI0" = "1" ]; then STATUS_SPI0="okay"; else STATUS_SPI0="disabled"; fi
 
-DEVICE_NAME_SPI0=$(awk '/^[ \t]*#define DEV_NAME_SPI0/ {print $3}' network_config.h | tr -d '"')
-CE_PIN_SPI0=$(awk '/^[ \t]*#define CE_PIN_SPI0/ {print $3}' network_config.h)
-IRQ_PIN_SPI0=$(awk '/^[ \t]*#define IRQ_PIN_SPI0/ {print $3}' network_config.h)
-SPEED_SPI0=$(awk '/^[ \t]*#define SPI0_SPEED/ {print $3}' network_config.h)
-CHIP_SELECT_PIN_SPI0=$(awk '/^[ \t]*#define CS_PIN_SPI0/ {print $3}' network_config.h)
+DEVICE_NAME_SPI0=$(awk '/^[ \t]*#define DEV_NAME_SPI0/ {print $3}' "$HW_CONFIG_FILE" | tr -d '"')
+CE_PIN_SPI0=$(awk '/^[ \t]*#define CE_PIN_SPI0/ {print $3}' "$HW_CONFIG_FILE")
+IRQ_PIN_SPI0=$(awk '/^[ \t]*#define IRQ_PIN_SPI0/ {print $3}' "$HW_CONFIG_FILE")
+SPEED_SPI0=$(awk '/^[ \t]*#define SPI0_SPEED/ {print $3}' "$HW_CONFIG_FILE")
+CHIP_SELECT_PIN_SPI0=$(awk '/^[ \t]*#define CS_PIN_SPI0/ {print $3}' "$HW_CONFIG_FILE")
 
 # ---- SPI1 ----
-ENABLE_SPI1=$(awk '/^[ \t]*#define RADIO_SPI1_ENABLE/ {print $3}' network_config.h)
+ENABLE_SPI1=$(awk '/^[ \t]*#define RADIO_SPI1_ENABLE/ {print $3}' "$HW_CONFIG_FILE")
 if [ "$ENABLE_SPI1" = "1" ]; then STATUS_SPI1="okay"; else STATUS_SPI1="disabled"; fi
 
-DEVICE_NAME_SPI1=$(awk '/^[ \t]*#define DEV_NAME_SPI1/ {print $3}' network_config.h | tr -d '"')
-CE_PIN_SPI1=$(awk '/^[ \t]*#define CE_PIN_SPI1/ {print $3}' network_config.h)
-IRQ_PIN_SPI1=$(awk '/^[ \t]*#define IRQ_PIN_SPI1/ {print $3}' network_config.h)
-SPEED_SPI1=$(awk '/^[ \t]*#define SPI1_SPEED/ {print $3}' network_config.h)
-MISO_PIN_SPI1=$(awk '/^[ \t]*#define SPI1_MISO_PIN/ {print $3}' network_config.h)
-MOSI_PIN_SPI1=$(awk '/^[ \t]*#define SPI1_MOSI_PIN/ {print $3}' network_config.h)
-SCLK_PIN_SPI1=$(awk '/^[ \t]*#define SPI1_SCLK_PIN/ {print $3}' network_config.h)
-CHIP_SELECT_PIN_SPI1=$(awk '/^[ \t]*#define CS_PIN_SPI1/ {print $3}' network_config.h)
+DEVICE_NAME_SPI1=$(awk '/^[ \t]*#define DEV_NAME_SPI1/ {print $3}' "$HW_CONFIG_FILE" | tr -d '"')
+CE_PIN_SPI1=$(awk '/^[ \t]*#define CE_PIN_SPI1/ {print $3}' "$HW_CONFIG_FILE")
+IRQ_PIN_SPI1=$(awk '/^[ \t]*#define IRQ_PIN_SPI1/ {print $3}' "$HW_CONFIG_FILE")
+SPEED_SPI1=$(awk '/^[ \t]*#define SPI1_SPEED/ {print $3}' "$HW_CONFIG_FILE")
+MISO_PIN_SPI1=$(awk '/^[ \t]*#define SPI1_MISO_PIN/ {print $3}' "$HW_CONFIG_FILE")
+MOSI_PIN_SPI1=$(awk '/^[ \t]*#define SPI1_MOSI_PIN/ {print $3}' "$HW_CONFIG_FILE")
+SCLK_PIN_SPI1=$(awk '/^[ \t]*#define SPI1_SCLK_PIN/ {print $3}' "$HW_CONFIG_FILE")
+CHIP_SELECT_PIN_SPI1=$(awk '/^[ \t]*#define CS_PIN_SPI1/ {print $3}' "$HW_CONFIG_FILE")
 
 
 sed -e "s/__STATUS_0__/${STATUS_SPI0}/g" \
